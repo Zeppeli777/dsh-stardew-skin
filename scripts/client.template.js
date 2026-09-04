@@ -130,6 +130,24 @@ body, body *:not(code):not(pre):not(kbd):not(samp) {
   font-family: 'FusionPixel', 'Microsoft YaHei', sans-serif !important;
 }
 ::selection { background: #a8331c; color: #fff3d8; }
+/* 会话消息流垫一张半透奶油纸面（星露谷书信感），保证壁纸上的正文可读。
+   首页无 _viewArea 容器，不受此规则影响；类名后缀来自官方 CSS Modules，跨版本相对稳定。 */
+[class*="_viewArea"] {
+  background: rgba(253, 240, 200, 0.88);
+  border: 2px solid rgba(74, 36, 8, 0.55);
+  border-radius: 4px;
+  box-shadow: 0 2px 0 rgba(74, 36, 8, 0.35);
+}
+/* 底部状态条（token 统计等）同样垫纸面 */
+[class*="_footArea"], [class*="_footerActions"] {
+  background: rgba(253, 240, 200, 0.82);
+  border-radius: 4px;
+}
+/* 会话页头部面包屑：垫半透明纸面提升壁纸上的可读性 */
+[class*="_centerCol"] [class*="_header"] {
+  background: rgba(253, 240, 200, 0.78);
+  border-radius: 4px;
+}
 `;
 		//#endregion
 

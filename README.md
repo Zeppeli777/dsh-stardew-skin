@@ -6,6 +6,8 @@
 
 ![主题预览](screenshots/theme-preview.png)
 
+![对话页](screenshots/chat-page-fixed.png)
+
 ## 效果
 
 - 全局缝合像素字体（Fusion Pixel，内嵌 woff2，中文友好）

@@ -57,16 +57,16 @@ window.__ModuleLoader__.load({
 			"--dsw-alias-interactive-bg-hover-accent": "#cfe3b8",
 			"--dsw-alias-interactive-bg-hover-danger": "#e8a08a",
 			"--dsw-alias-interactive-bg-hover-solid": "#d9a75f",
-			// 文字
-			"--dsw-alias-label-primary": "#452a0c",
-			"--dsw-alias-label-primary-dimmed": "#6b4423",
+			// 文字（全部加深一档，小字在奶油底上更实）
+			"--dsw-alias-label-primary": "#33200a",
+			"--dsw-alias-label-primary-dimmed": "#57371a",
 			"--dsw-alias-label-primary-foreground": "#fff3d8",
 			"--dsw-alias-label-primary-inverted": "#fbe4b0",
 			"--dsw-alias-label-primary-bluish": "#4a86c5",
-			"--dsw-alias-label-secondary": "#7a5228",
-			"--dsw-alias-label-tertiary": "#8a6a4a",
-			"--dsw-alias-label-caption": "#7a5228",
-			"--dsw-alias-label-dimmed": "#a07a4a",
+			"--dsw-alias-label-secondary": "#5f3d1c",
+			"--dsw-alias-label-tertiary": "#6f4d2e",
+			"--dsw-alias-label-caption": "#5f3d1c",
+			"--dsw-alias-label-dimmed": "#8a6238",
 			// Markdown
 			"--dsw-alias-markdown-code-block": "#2a1a0e",
 			"--dsw-alias-markdown-code-block-banner": "#4a3016",
@@ -123,29 +123,48 @@ window.__ModuleLoader__.load({
   font-display: swap;
 }
 body {
-  background: #6db3f2 url(data:image/jpeg;base64,__WALLPAPER_B64__) center / cover fixed no-repeat !important;
+  background: #6db3f2 !important;
+}
+/* 壁纸移到伪元素上：轻微模糊 + 降饱和 + 提亮，让山谷退成「远景」不与文字抢对比 */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: url(data:image/jpeg;base64,__WALLPAPER_B64__) center / cover no-repeat;
+  filter: blur(3px) saturate(0.82) brightness(1.07);
+  pointer-events: none;
+}
+/* 再罩一层薄纱，进一步压掉壁纸的「杂」 */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: rgba(253, 240, 200, 0.20);
+  pointer-events: none;
 }
 /* 像素字体全站替换（代码与等宽元素除外，保住图标与代码的可读性） */
 body, body *:not(code):not(pre):not(kbd):not(samp) {
   font-family: 'FusionPixel', 'Microsoft YaHei', sans-serif !important;
 }
 ::selection { background: #a8331c; color: #fff3d8; }
-/* 会话消息流垫一张半透奶油纸面（星露谷书信感），保证壁纸上的正文可读。
+/* 会话消息流垫近乎实心的奶油纸面（星露谷书信感），保证正文绝对清晰。
    首页无 _viewArea 容器，不受此规则影响；类名后缀来自官方 CSS Modules，跨版本相对稳定。 */
 [class*="_viewArea"] {
-  background: rgba(253, 240, 200, 0.88);
+  background: rgba(253, 240, 200, 0.97);
   border: 2px solid rgba(74, 36, 8, 0.55);
   border-radius: 4px;
   box-shadow: 0 2px 0 rgba(74, 36, 8, 0.35);
 }
 /* 底部状态条（token 统计等）同样垫纸面 */
 [class*="_footArea"], [class*="_footerActions"] {
-  background: rgba(253, 240, 200, 0.82);
+  background: rgba(253, 240, 200, 0.92);
   border-radius: 4px;
 }
-/* 会话页头部面包屑：垫半透明纸面提升壁纸上的可读性 */
+/* 会话页头部面包屑：垫近乎实心的纸面提升可读性 */
 [class*="_centerCol"] [class*="_header"] {
-  background: rgba(253, 240, 200, 0.78);
+  background: rgba(253, 240, 200, 0.92);
   border-radius: 4px;
 }
 `;

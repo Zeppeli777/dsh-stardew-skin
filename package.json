@@ -1,19 +1,23 @@
 {
-  "name": "dsh-theme-stardew",
+  "name": "dsh-theme-stardew-fullskin",
   "version": "0.1.0",
-  "description": "Stardew Valley theme for the DeepSeek Harness Web UI: an official-mechanism client theme that stacks a Stardew alias-token layer over the active theme, with pixel font and valley wallpaper. No dist replacement — the official React UI stays intact.",
+  "description": "Stardew Valley theme for the DeepSeek Harness Web UI: a self-contained frontend that replaces the served dist, with the Junimo NPC dialog, farm-select mode picker, quest journal HUD, 8-bit sound feedback, and wallpaper system.",
   "type": "module",
-  "main": "lib/index.js",
+  "main": "index.js",
   "exports": {
-    ".": "./lib/index.js",
-    "./client": "./lib/client.js",
+    ".": "./index.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
+    "./web/*": "./web/*",
     "./package.json": "./package.json"
   },
   "files": [
-    "lib",
-    "cordis.patch.yml"
+    "index.js",
+    "cordis.patch.yml",
+    "web"
   ],
+  "scripts": {
+    "dev": "node scripts/dev-server.mjs"
+  },
   "keywords": [
     "dsh-plugin",
     "deepseek-harness",
@@ -26,16 +30,9 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
-    },
-    "client": {
-      "platform": "web",
-      "immediately": true,
-      "inject": [
-        "@deepseek-ai/dsh-client-ui-theme"
-      ]
     }
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-client-ui-theme": "^0.1.2-rc.1"
+    "@deepseek-ai/dsh-web-app": "^0.1.0-rc.5"
   }
 }

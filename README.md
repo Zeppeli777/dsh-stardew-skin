@@ -1,92 +1,114 @@
-# dsh-theme-stardew · 星露谷物语主题（官方机制版）
+# dsh-theme-stardew-fullskin · 星露谷物语整皮主题
 
-把 DeepSeek Harness 的 Web UI 刷成星露谷物语配色：像素字体、山谷壁纸、奶油色面板、木质按钮——**不替换官方前端**，官方 React UI 的每一项功能原样保留。
+把 DeepSeek Harness 的 Web UI 换成一整片星露谷——祝尼魔陪你写代码。
 
-灵感来自 [dsh_theme_terraria](https://github.com/10086ggqq/dsh_theme_terraria)，但实现路线不同：本包走 dsh 官方客户端主题机制，以 `ctx.theme.overrideTokens()` 在当前主题上叠加一层星露谷 design-token（`--dsw-alias-*` / `--dsw-specific-*`），再加少量 CSS（像素字体 + 壁纸 + 选区色）。
+灵感与骨架来自 [dsh_theme_terraria](https://github.com/10086ggqq/dsh_theme_terraria)（同一套 dsh 主题插件机制），视觉与素材全面换成星露谷物语。
 
-![主题预览](screenshots/theme-preview.png)
+> 🔀 本分支（`fullskin`）是**完全替换版**：整个前端换成星露谷界面。想要只换配色、保留官方 React UI 的**组件替换版**，请切到 [`main`](../../tree/main) 分支。
 
-![对话页](screenshots/chat-page-fixed.png)
+![标题屏](screenshots/title.png)
 
-## 效果
+## 功能一览
 
-- 全局缝合像素字体（Fusion Pixel，内嵌 woff2，中文友好）
-- 整个 App 背景换成星露谷风像素山谷（内嵌 JPEG，`--dsw-alias-bg-base: transparent` 透出）
-- ~70 个 dsw token 覆盖：奶油纸面 `#fbe4b0`、深棕描边 `#4a2408`、木按钮 `#b56a2c`、谷仓红 `#a8331c`、草绿 `#3d8c40`
-- 圆角统一压到 2px 的「像素面板」观感，选区色换成星露谷黄
-- light / dark 两组 token 同值——星露谷没有黑夜模式 🌽
+- **标准 dsh 插件包**：入口 `index.js` 导出 `apply(ctx)`，`cordis.patch.yml` 声明 `dsh.bundle` 补丁层，一条 `dsh plugin --profile web add dsh-theme-stardew-fullskin` 即可安装/卸载，不改动 dsh 安装中的任何文件。
+- **不是纯皮肤**：主题直连 dsh 宿主的 JSON-RPC（HTTP 上行）+ WebSocket（事件下行）协议，会话创建、消息发送、流式输出、工具审批、模型切换、工作空间管理全部真实可用。
+- **四块农场 = 四个 Agent 预设**：标准农场（standard，全功能编码代理）、河边农场（code，Code Mode SDK）、森林农场（minimal，极简双工具）、山顶农场（cordis，自定义 preset 模板）。模式选择弹窗 1:1 复刻游戏内「建人物 + 选农场」界面，配官方农场地图图标。
+- **上下文能量条**：HUD 里的游戏能量条实时显示上下文余量（按最近一轮 prompt tokens / 标称上下文估算，默认 128K，可用 `localStorage stardew.ctxCap` 调整）。
+- **五只农场伙伴桌宠**：小鸡（蹦跳）、虚空鸡（漂浮）、史莱姆（挤压跳）、猫咪（游走+坐下）、蝴蝶（飞舞），各自独立开关，互不挡操作。
+- **8-bit 音效引擎**：纯 WebAudio 振荡器合成，零音频文件；助手回复、审批请求、提问、失败各有提示音，顶栏一键开关。
+- **壁纸 / BGM**：默认 AI 生成的星露谷风像素山谷壁纸；支持自定义图片/GIF/视频壁纸（IndexedDB），自定义 BGM 上传循环播放，另有「示例 BGM ♪」内嵌 SoundCloud 播放器（ConcernedApe - Spring (The Valley Comes Alive)，需能访问 soundcloud.com）。
+
+### 概念映射
+
+| 官方 UI 概念 | 星露谷主题映射 |
+| --- | --- |
+| Agent Preset（预设） | 农场选择：标准 / 河边 / 森林 / 山顶 |
+| 会话（Session） | 存档 / 新的一天 |
+| 用户消息 | 农夫 |
+| 助手 | 祝尼魔 |
+| 工具审批请求 | 布告栏委托 |
+| 任务清单（todo） | 任务日志 |
+| token 用量 | 上下文能量条 |
+| API 密钥状态 | 指示灯（绿=已配置） |
 
 ## 安装
 
-```bash
-# 环境：dsh CLI >= 0.1.2-rc.1（dsh --version 确认）
-dsh plugin --profile web add dsh-theme-stardew        # 从 npm / 插件源
-# 或本地目录：
+```
+# 环境：已安装 dsh CLI（dsh --version 可用），Node.js ^22.19 || >=24 与 pnpm
+# 1. 把主题作为插件安装进 web profile
+dsh plugin --profile web add dsh-theme-stardew-fullskin
+
+# 或从本地目录安装（本分支的仓库根就是插件包）
 dsh plugin --profile web add /path/to/dsh-stardew-skin
-dsh web                                                # 重启后生效
+
+# 或直接从 GitHub 的本分支安装
+dsh plugin --profile web add github:Zeppeli777/dsh-stardew-skin#fullskin
+
+# 2. 启动 Web 服务（默认 http://127.0.0.1:3080/）
+dsh web
 ```
 
-打开页面如未变化，强制刷新 `Ctrl+F5` 或地址加 `?v=2` 绕过缓存。
+打开页面 → 「新存档」→ 在弹出的设置里填入 DeepSeek API 密钥 → 开始对话。
+
+### 避坑
+
+- 更新插件后页面没变：强制刷新 `Ctrl+F5` 或地址加 `?v=2` 绕过缓存。
+- 浏览器缓存旧 UI / 密钥保存失败 / 文件夹选择器拿不到完整路径等问题，与 Terraria 版一致，见[参考仓库 README](https://github.com/10086ggqq/dsh_theme_terraria#避坑指南实测踩过的坑)。
+
+## 本地预览（不装 dsh 也能看界面）
+
+```
+npm run dev          # 默认 http://127.0.0.1:7100/
+npm run dev -- --port 8080
+```
+
+纯静态伺服 `web/`，无宿主时 RPC 会失败（界面可浏览，对话不可用）。
+
+## 修改主题
+
+直接编辑 `web/index.html`（HTML+CSS+JS 单文件，无构建步骤），重启 `dsh web` 生效。
+素材加工脚本在 `scripts/`（`transform.py` 为一次性改皮脚本，`gen_pets.py` 生成桌宠页，`dev-server.mjs` 为预览服务器）。
 
 ## 卸载
 
-```bash
-dsh plugin --profile web remove dsh-theme-stardew
-dsh web   # 重启后恢复官方默认外观
+```
+dsh plugin --profile web remove dsh-theme-stardew-fullskin
+dsh web   # 重启后恢复官方 React 前端
 ```
 
-## 原理
-
-```
-dsh plugin add
-  └─ package.json: dsh.client { platform: web, immediately, inject: [theme] }
-  └─ cordis.patch.yml  → 向 bundle 插入 { id: stardew-theme }
-       └─ lib/client.js（浏览器端）
-            ├─ 注入 <style id="dsh-theme-stardew">：@font-face + body 壁纸 + 像素字体
-            └─ ctx.theme.overrideTokens('dsh-theme-stardew', { '--dsw-alias-*': { light, dark }, ... })
-```
-
-主题层由官方 presenter 以 `body.style.setProperty()` 应用，跟随官方主题系统生命周期，升级 dsh 不丢。
-
-## 开发
-
-```bash
-node scripts/build-client.mjs   # 把 assets/ 的字体+壁纸转 base64 填入 scripts/client.template.js → lib/client.js
-```
-
-改配色：编辑 `scripts/client.template.js` 里的 `TOKENS` 表后重新 build。
+浏览器端个性化数据（壁纸、音乐、音效开关、审批偏好、伙伴设定）存在 localStorage / IndexedDB，清除站点数据即可完全抹掉。
 
 ## 目录结构
 
 ```
-├── package.json            <- 插件清单（dsh.client / dsh.bundle 声明）
-├── cordis.patch.yml        <- bundle 补丁：插入 stardew-theme 行
-├── lib/
-│   ├── index.js                宿主侧入口（no-op，占位产生 loader 条目）
-│   └── client.js               浏览器端主题（由 scripts/build-client.mjs 生成）
-├── scripts/
-│   ├── client.template.js      client.js 模板（TOKENS 配色表在这里）
-│   └── build-client.mjs        资源内嵌构建脚本
-├── assets/                 <- 维基原始素材 + SOURCES.md 来源清单
-├── screenshots/            <- 效果图
-└── fullskin/               <- 姊妹包 dsh-theme-stardew-fullskin：Terraria 式整皮替换版
-                              （祝尼魔对话、农场选模式、能量条 HUD、桌宠、8-bit 音效）
+├── package.json            <- 插件清单（包名 dsh-theme-stardew-fullskin、dsh.bundle 补丁声明）
+├── index.js                <- 插件入口：导出 apply(ctx)，替换官方前端解析器
+├── cordis.patch.yml        <- bundle 补丁层：停用官方 web-runtime，插入 stardew-theme 行
+├── web/                    <- 插件伺服的主题前端
+│   ├── index.html              主题全部源码（HTML + CSS + JS 单文件）
+│   ├── logo.png                星露谷物语中文 Logo（标题屏）
+│   ├── valley.jpg              默认山谷壁纸（AI 生成）
+│   ├── junimo.png              祝尼魔头像
+│   ├── heart.png               红心印记（对话气泡装饰）
+│   ├── energybar.png           能量条参考图
+│   ├── farm-*.png              农场地图图标（模式选择弹窗）
+│   ├── chicken_*.png / slime.gif / cat.gif / butterfly.gif   桌宠素材
+│   ├── parsnip.png             防风草 favicon
+│   ├── fusion-pixel-12px.woff2 缝合像素字体（开源）
+│   ├── chicken_pet.html / voidchicken_pet.html / slime_pet.html / cat_pet.html / butterfly_pet.html   桌宠页
+│   └── manifest.webmanifest    PWA 清单
+├── scripts/                <- 素材加工与构建脚本（不参与运行）
+├── assets/                 <- 维基下载的原始素材 + SOURCES.md 来源清单
+├── screenshots/            <- 界面截图
+└── reference-terraria/     <- Terraria 主题参考仓库（仅开发参考，不参与打包）
 ```
-
-## 与 fullskin 版怎么选
-
-| | **dsh-theme-stardew**（本包） | fullskin/（整皮版） |
-| --- | --- | --- |
-| 机制 | 官方 token 覆盖 | 整体替换伺服的前端 |
-| 官方新功能 | 自动跟随 | 需手动追版 |
-| 稳定性 | 高（不碰 DOM 结构） | 依赖 RPC 协议细节 |
-| 玩法 | 纯视觉 | 祝尼魔 / 桌宠 / 音效 / 能量条 |
 
 ## 素材来源与许可
 
-- 代码：**MIT License**
-- 游戏素材（Logo、祝尼魔、农场图标等）：取自 [Stardew Valley Wiki](https://zh.stardewvalleywiki.com)，版权归 ConcernedApe 所有。粉丝向非官方皮肤，**素材请勿商用**。逐文件来源见 `assets/SOURCES.md`。
-- 像素字体 Fusion Pixel：遵循其自身开源许可（Fusion Pixel Font 项目）。
-- 山谷壁纸 `assets/valley.jpg`：AI 生成的星露谷风格像素画。
+- 本主题代码：**MIT License**
+- 游戏素材（Logo、祝尼魔、鸡、史莱姆、猫、蝴蝶、农场图标等）：取自 [Stardew Valley Wiki](https://zh.stardewvalleywiki.com)，版权归 ConcernedApe 所有。本主题为粉丝向非官方皮肤，与 ConcernedApe 无关；**素材请勿商用**。逐文件来源见 `assets/SOURCES.md`。
+- 像素字体 Fusion Pixel：其自身的开源许可（见 Fusion Pixel Font 项目）。
+- 示例 BGM「Spring (The Valley Comes Alive)」：通过 SoundCloud 官方嵌入式播放器在线播放，不分发音频文件。
+- 默认壁纸 `valley.jpg`：AI 生成的星露谷风格像素画。
 
 愿祝尼魔的星光落在你的每一次编译上。

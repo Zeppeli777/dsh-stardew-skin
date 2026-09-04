@@ -1,4 +1,4 @@
-# dsh-theme-stardew · 星露谷物语主题（官方机制版）
+# dsh-theme-stardew · 星露谷物语主题（组件替换版）
 
 把 DeepSeek Harness 的 Web UI 刷成星露谷物语配色：像素字体、山谷壁纸、奶油色面板、木质按钮——**不替换官方前端**，官方 React UI 的每一项功能原样保留。
 
@@ -68,14 +68,15 @@ node scripts/build-client.mjs   # 把 assets/ 的字体+壁纸转 base64 填入 
 │   ├── client.template.js      client.js 模板（TOKENS 配色表在这里）
 │   └── build-client.mjs        资源内嵌构建脚本
 ├── assets/                 <- 维基原始素材 + SOURCES.md 来源清单
-├── screenshots/            <- 效果图
-└── fullskin/               <- 姊妹包 dsh-theme-stardew-fullskin：Terraria 式整皮替换版
-                              （祝尼魔对话、农场选模式、能量条 HUD、桌宠、8-bit 音效）
+└── screenshots/            <- 效果图
 ```
 
-## 与 fullskin 版怎么选
+## 与整皮版怎么选
 
-| | **dsh-theme-stardew**（本包） | fullskin/（整皮版） |
+> 🔀 本分支（`main`）是**组件替换版**。完全替换版（祝尼魔对话、农场选模式、能量条 HUD、桌宠、8-bit 音效）在 [`fullskin`](../../tree/fullskin) 分支，该分支的仓库根就是插件包：
+> `dsh plugin --profile web add github:Zeppeli777/dsh-stardew-skin#fullskin`
+
+| | **dsh-theme-stardew**（本分支） | fullskin 分支（整皮版） |
 | --- | --- | --- |
 | 机制 | 官方 token 覆盖 | 整体替换伺服的前端 |
 | 官方新功能 | 自动跟随 | 需手动追版 |

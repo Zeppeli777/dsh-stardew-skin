@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>虚空鸡 - 桌宠</title>
+<!-- 农场伙伴桌宠内容页：宿主页发 dsh:pet pause/resume，本页回 dsh:pet-ack；加载完成发 dsh:pet-ready -->
+<style>
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:transparent;}
+#stage{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;}
+.pet{
+  position:absolute;left:0;top:0;width:120px;height:120px;
+  background-image:url("/chicken_void.png");background-size:contain;background-repeat:no-repeat;background-position:center;
+  image-rendering:pixelated;will-change:transform;
+}
+</style>
+</head>
+<body>
+<div id="stage"><div class="pet" id="pet"></div></div>
+<script>
+const pet=document.getElementById('pet');
+const HALF=60;
+let pos={x:window.innerWidth/2,y:window.innerHeight/2};
+let vel={x:0,y:0};
+let tgt={x:pos.x,y:pos.y};
+let t=0;
+let running=true;
+window.addEventListener('message',(ev)=>{
+  const d=ev.data;
+  if(!d||d.type!=='dsh:pet')return;
+  if(d.command==='pause')running=false;
+  else if(d.command==='resume')running=true;
+  if(ev.source)ev.source.postMessage({type:'dsh:pet-ack',command:d.command,running:running},'*');
+});
+function newTarget(){
+  const m=HALF+40;
+  tgt.x=Math.max(m,Math.min(window.innerWidth-m,Math.random()*window.innerWidth));
+  tgt.y=Math.max(m,Math.min(window.innerHeight-m,Math.random()*window.innerHeight));
+}
+function tick(){
+  if(running){
+  t+=1;
+  if(Math.random()<(1/180))newTarget();
+  const dx=tgt.x-pos.x,dy=tgt.y-pos.y;
+  const dist=Math.hypot(dx,dy);
+  if(dist>60){
+    vel.x+=dx/dist*0.04;vel.y+=dy/dist*0.04;
+  }else{newTarget();}
+  vel.x*=0.985;vel.y*=0.985;
+  pos.x+=vel.x;pos.y+=vel.y;
+  const bob=Math.sin(t*0.06)*14;
+  const dir=Math.sign(vel.x)||1;
+  pet.style.left=(pos.x-HALF)+'px';
+  pet.style.top=(pos.y-HALF+bob)+'px';
+  pet.style.transform='scaleX('+dir+')';
+  }
+  requestAnimationFrame(tick);
+}
+window.addEventListener('resize',()=>{
+  pos.x=Math.min(pos.x,window.innerWidth-HALF);
+  pos.y=Math.min(pos.y,window.innerHeight-HALF);
+});
+newTarget();
+tick();
+parent.postMessage({type:'dsh:pet-ready'},'*');
+</script>
+</body>
+</html>

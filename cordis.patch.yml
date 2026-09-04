@@ -1,0 +1,10 @@
+# dsh-theme-stardew bundle patch: insert the theme's loader row so the web
+# host's client-modules service discovers this package's `dsh.client`
+# declaration and serves its browser bundle. The row mounts the host half
+# (lib/index.js), which is intentionally a no-op: the theme lives entirely
+# in the browser plugin (lib/client.js). Remove this bundle from the profile
+# to restore the stock appearance.
+
+- insert:
+    - id: stardew-theme
+      name: dsh-theme-stardew

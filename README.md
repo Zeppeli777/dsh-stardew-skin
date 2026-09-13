@@ -8,10 +8,12 @@
 
 ![标题屏](screenshots/title.png)
 
+![主界面（rc.1 实测）](screenshots/rc1-main.png)
+
 ## 功能一览
 
 - **标准 dsh 插件包**：入口 `index.js` 导出 `apply(ctx)`，`cordis.patch.yml` 声明 `dsh.bundle` 补丁层，一条 `dsh plugin --profile web add dsh-theme-stardew-fullskin` 即可安装/卸载，不改动 dsh 安装中的任何文件。
-- **不是纯皮肤**：主题直连 dsh 宿主的 JSON-RPC（HTTP 上行）+ WebSocket（事件下行）协议，会话创建、消息发送、流式输出、工具审批、模型切换、工作空间管理全部真实可用。
+- **不是纯皮肤**：主题直连 dsh 宿主的 Typert 网关协议（0.1.2-rc.1：一元调用 `POST /api/<ns>/<method>`，事件走 WebSocket `/api/remote.mux` 多路复用流——`$events` 广播/审批瀑布 + `session/follow` 会话日志），会话创建、消息发送、流式输出、工具审批、模型切换、工作空间管理全部真实可用。
 - **四块农场 = 四个 Agent 预设**：标准农场（standard，全功能编码代理）、河边农场（code，Code Mode SDK）、森林农场（minimal，极简双工具）、山顶农场（cordis，自定义 preset 模板）。模式选择弹窗 1:1 复刻游戏内「建人物 + 选农场」界面，配官方农场地图图标。
 - **上下文能量条**：HUD 里的游戏能量条实时显示上下文余量（按最近一轮 prompt tokens / 标称上下文估算，默认 128K，可用 `localStorage stardew.ctxCap` 调整）。
 - **五只农场伙伴桌宠**：小鸡（蹦跳）、虚空鸡（漂浮）、史莱姆（挤压跳）、猫咪（游走+坐下）、蝴蝶（飞舞），各自独立开关，互不挡操作。
@@ -34,7 +36,7 @@
 ## 安装
 
 ```
-# 环境：已安装 dsh CLI（dsh --version 可用），Node.js ^22.19 || >=24 与 pnpm
+# 环境：dsh CLI ≥ 0.1.2-rc.1（协议与该版本匹配；旧版 dsh 请用历史提交），Node.js ^22.19 || >=24 与 pnpm
 # 1. 把主题作为插件安装进 web profile
 dsh plugin --profile web add dsh-theme-stardew-fullskin
 
@@ -52,6 +54,7 @@ dsh web
 
 ### 避坑
 
+- 农场按钮按宿主实际存在的预设动态生成：rc.1 起官方预设调整为 standard / minimal / cordis（另可能有 PTC 等新增预设，以原名追加显示），旧版的 code（河边农场）预设已不存在。
 - 更新插件后页面没变：强制刷新 `Ctrl+F5` 或地址加 `?v=2` 绕过缓存。
 - 浏览器缓存旧 UI / 密钥保存失败 / 文件夹选择器拿不到完整路径等问题，与 Terraria 版一致，见[参考仓库 README](https://github.com/10086ggqq/dsh_theme_terraria#避坑指南实测踩过的坑)。
 

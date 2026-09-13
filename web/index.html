@@ -732,8 +732,10 @@ body {
 
 <script>
 /* ============================================================
-   Terraria UI 原生客户端：直接对话 dsh web 的 /api JSON-RPC 网关
-   一元调用 POST /api/<method>；事件流 WebSocket /api/events.mux
+   星露谷 UI 原生客户端：直接对话 dsh web 的 /api Typert 网关（0.1.2-rc.1）
+   一元调用 POST /api/<namespace>/<method>，payload 为 {args:{...}}；
+   事件流 WebSocket /api/remote.mux（open/item/end/error 多路复用帧），
+   广播与需应答事件走 $events 流，会话日志走 session/follow 流。
    ============================================================ */
 'use strict'
 const $ = (sel) => document.querySelector(sel)
@@ -774,6 +776,9 @@ const state = {
   bgmOn: localStorage.getItem('stardew.bgmOn') === '1',
   ws: null,
   wsTimer: null,
+  clientId: null,        // $events 流 ready 帧发放的客户端身份（应答 waterfall 事件用）
+  wsStreams: new Map(),  // streamId -> { onItem, onEnd }，remote.mux 上的逻辑流
+  followStreamId: null,  // 当前会话 session/follow 流的 streamId
   streamEl: null,     // 流式输出中的助手气泡 body
   streamWrap: null,
   pendingUserText: null,
@@ -789,25 +794,32 @@ state.bgmVol = Number.isFinite(savedBgmVol) && savedBgmVol >= 0 && savedBgmVol <
 class RpcError extends Error {
   constructor(code, message) { super(message); this.code = code }
 }
-async function rpc(method, payload) {
+async function rpc(method, args) {
   const res = await fetch('/api/' + method, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ type: 'client-request', rpcId: crypto.randomUUID(), method, payload }),
+    body: JSON.stringify({ type: 'client-request', rpcId: crypto.randomUUID(), method, payload: { args: args || {} } }),
   })
   if (!res.ok) throw new Error('传输失败 ' + method + ': HTTP ' + res.status)
   const full = await res.json()
   if (!full.result.ok) throw new RpcError(full.result.error.code, full.result.error.message)
   return full.result.value
 }
-async function rpcRespond(rpcId, value) {
-  const res = await fetch('/api/respond', {
+/** 应答 $events 流里的 waterfall 事件（审批/提问）；value 省略时表示「我不处理，交给下一家」。 */
+async function eventResult(eventId, value) {
+  if (!state.clientId) throw new Error('事件流尚未就绪，无法应答')
+  const outcome = value === undefined ? { kind: 'next' } : { kind: 'result', value }
+  const res = await fetch('/api/$events/result', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ type: 'client-response', rpcId, result: { ok: true, value } }),
+    body: JSON.stringify({
+      type: 'client-request', rpcId: crypto.randomUUID(), method: '$events/result',
+      payload: { args: { clientId: state.clientId, eventId, outcome } },
+    }),
   })
   if (!res.ok) throw new Error('应答失败: HTTP ' + res.status)
-  return res.json()
+  const full = await res.json()
+  if (full.result && !full.result.ok) throw new RpcError(full.result.error.code, full.result.error.message)
 }
 
 /* ---------- toast / 终端镜像 ---------- */
@@ -881,54 +893,155 @@ function setConn(on) {
   $('#conn-label').textContent = on ? '已连接到星露谷' : '连接已断开，重连中…'
 }
 
-/* ---------- WebSocket 事件流 ---------- */
+/* ---------- WebSocket 事件流（/api/remote.mux 多路复用） ---------- */
 function connectWs() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
   let ws
-  try { ws = new WebSocket(proto + '//' + location.host + '/api/events.mux') } catch { scheduleReconnect(); return }
+  try { ws = new WebSocket(proto + '//' + location.host + '/api/remote.mux') } catch { scheduleReconnect(); return }
   state.ws = ws
   ws.addEventListener('open', () => {
     setConn(true)
-    if (state.sessionId && !state.historyLoaded) loadHistory()
+    // 旧连接上的逻辑流全部失效，重建 $events 与当前会话的 follow 流
+    state.wsStreams.clear()
+    state.followStreamId = null
+    state.clientId = null
+    openStream('$events', { args: {} }, handleEventsItem)
+    if (state.sessionId) followSession(state.sessionId, !state.historyLoaded)
   })
   ws.addEventListener('message', (ev) => {
-    let full
-    try { full = JSON.parse(ev.data) } catch { return }
-    if (full.type === 'server-request') handleServerRequest(full)
+    let frame
+    try { frame = JSON.parse(ev.data) } catch { return }
+    if (frame.type === 'item') {
+      const s = state.wsStreams.get(frame.streamId)
+      if (s) s.onItem(frame.value)
+    } else if (frame.type === 'end') {
+      const s = state.wsStreams.get(frame.streamId)
+      state.wsStreams.delete(frame.streamId)
+      if (s && s.onEnd) s.onEnd()
+    } else if (frame.type === 'error') {
+      const s = state.wsStreams.get(frame.streamId)
+      state.wsStreams.delete(frame.streamId)
+      const msg = frame.error && frame.error.message ? frame.error.message : '未知'
+      if (s && s.onEnd) s.onEnd(new Error(msg))
+      else toast('事件流错误：' + msg, 'err')
+    }
   })
-  ws.addEventListener('close', () => { setConn(false); scheduleReconnect() })
+  ws.addEventListener('close', () => { setConn(false); state.clientId = null; scheduleReconnect() })
   ws.addEventListener('error', () => { })
 }
 function scheduleReconnect() {
   if (state.wsTimer) return
   state.wsTimer = setTimeout(() => { state.wsTimer = null; connectWs() }, 2000)
 }
+/** 在 remote.mux 上开一条逻辑流；onItem(value) 收 item 帧，onEnd(err?) 收 end/error 帧。 */
+function openStream(endpoint, payload, onItem, onEnd) {
+  if (!state.ws || state.ws.readyState !== WebSocket.OPEN) throw new Error('事件流未连接')
+  const streamId = crypto.randomUUID()
+  state.wsStreams.set(streamId, { onItem, onEnd })
+  state.ws.send(JSON.stringify({ type: 'open', streamId, endpoint, payload }))
+  return streamId
+}
+function closeStream(streamId) {
+  if (!streamId) return
+  if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+    try { state.ws.send(JSON.stringify({ type: 'cancel', streamId })) } catch { /* 连接已断 */ }
+  }
+  state.wsStreams.delete(streamId)
+}
 
-function handleServerRequest(full) {
-  const p = full.payload
-  if (!p || typeof p !== 'object') return
-  switch (p.type) {
-    case 'session/event':
-      handleSessionEvent(p.sessionId, p.event, false)
+/* ---------- $events 流：广播事件 + 需应答的 waterfall 事件 ---------- */
+function handleEventsItem(value) {
+  if (!value || typeof value !== 'object') return
+  if (value.type === 'ready') {
+    state.clientId = value.clientId
+    termLine('已接入星露谷事件总线', 't-dim')
+    return
+  }
+  if (value.type === 'emit') { handleEmit(value.event, value.args || []); return }
+  if (value.type === 'waterfall') { handleWaterfall(value); return }
+}
+function handleEmit(event, args) {
+  switch (event) {
+    case 'api-session/added':
+    case 'api-session/status': {
+      const s = args[0]
+      if (s && s.sessionId === state.sessionId && typeof s.running === 'boolean') setRunning(s.running)
       break
-    case 'session/subscribed':
-      if (p.sessionId === state.sessionId && !state.historyLoaded && p.lastSeq >= 0) loadHistory()
+    }
+    case 'agent-preset/selected': {
+      // args: [sessionId, agentPreset]
+      if (args[0] === state.sessionId && args[1]) {
+        state.agentPreset = args[1]
+        $('#main-session-name').textContent = (PRESET_NAMES[args[1]] || args[1])
+          + (state.workspaceTitle ? '@' + state.workspaceTitle : '')
+      }
       break
-    case 'approval/requested':
-      handleApproval(full.rpcId, p)
-      break
-    case 'question/requested':
-      handleQuestion(full.rpcId, p)
-      break
-    case 'session/queue':
-      termLine('队列更新：' + p.items.length + ' 条待处理', 't-dim')
-      break
-    case 'stream/error':
-      toast('事件流错误：' + (p.error && p.error.message ? p.error.message : '未知'), 'err')
+    }
+    case 'settings/document-updated':
+      refreshKeyStatus()
       break
     default:
       break
   }
+}
+function handleWaterfall(frame) {
+  switch (frame.event) {
+    case 'approval/request':
+      handleApproval(frame.eventId, frame.request || {})
+      break
+    case 'user-questions/request':
+      handleQuestion(frame.eventId, frame.request || {})
+      break
+    default:
+      // 不认识的事件一律 next，避免阻塞宿主瀑布
+      eventResult(frame.eventId, undefined).catch(() => { })
+      break
+  }
+}
+
+/* ---------- 会话日志流（session/follow）：快照回放 + 实时事件 ---------- */
+function followSession(sessionId, replay) {
+  if (state.followStreamId) { closeStream(state.followStreamId); state.followStreamId = null }
+  const sid = sessionId
+  let streamId
+  try {
+    streamId = openStream('session/follow',
+    { args: { request: { address: { kind: 'session', sessionId: sid }, maxMessages: 200 } } },
+    (value) => {
+      if (!value || typeof value !== 'object') return
+      if (value.type === 'snapshot') {
+        if (value.header && value.header.agentPreset) state.agentPreset = value.header.agentPreset
+        if (replay) replaySnapshot(value)
+        state.historyLoaded = true
+      } else if (value.type === 'event') {
+        handleSessionEvent(sid, value.event, false)
+      }
+    },
+    (err) => {
+      if (state.followStreamId && err) termLine('会话流断开：' + err.message, 't-err')
+    })
+  } catch (e) {
+    termLine('会话流打开失败：' + e.message, 't-err')
+    return
+  }
+  state.followStreamId = streamId
+}
+function replaySnapshot(snap) {
+  $('#messages').innerHTML = ''
+  state.toolBlocks.clear()
+  state.streamEl = null
+  state.streamWrap = null
+  let lastTodos = null
+  for (const rec of snap.records || []) {
+    // chunks 记录是打包的助手增量流；定稿 assistant/message 会完整渲染，回放跳过
+    if (rec.type !== 'event') continue
+    const ev = rec.event
+    if (ev.type === 'todo/write') lastTodos = ev.data.todos
+    if (ev.type === 'assistant/chunk') continue
+    handleSessionEvent(state.sessionId, ev, true)
+  }
+  if (lastTodos) renderTodos(lastTodos)
+  appendSysLine('—— 历史已加载 ——')
 }
 
 /* ---------- 会话事件渲染 ---------- */
@@ -1036,10 +1149,12 @@ function finalizeAssistant(message, usage) {
     det.appendChild(sum); det.appendChild(rb)
     body.parentNode.insertBefore(det, body)
   }
-  if (usage && (usage.totalTokens !== undefined)) {
+  if (usage && (usage.inputTokens !== undefined || usage.totalTokens !== undefined)) {
     const u = document.createElement('div')
     u.className = 'msg-usage'
-    u.textContent = 'tokens: ' + (usage.promptTokens ?? '?') + ' + ' + (usage.completionTokens ?? '?') + ' = ' + usage.totalTokens
+    const total = usage.totalTokens ?? ((usage.inputTokens ?? 0) + (usage.outputTokens ?? 0))
+    // totalTokens 是整次调用的全量口径（含缓存读取），通常大于 输入+输出 的表面和
+    u.textContent = 'tokens: 总计 ' + total + '（输入 ' + (usage.inputTokens ?? '?') + ' / 输出 ' + (usage.outputTokens ?? '?') + '）'
     body.parentNode.appendChild(u)
     updateEnergy(usage)
   }
@@ -1048,12 +1163,13 @@ function finalizeAssistant(message, usage) {
   scrollMsgs()
 }
 
-/* ---------- 上下文能量条：以最近一轮 promptTokens 估算上下文占用 ---------- */
+/* ---------- 上下文能量条：以最近一轮输入 tokens（含缓存命中）估算上下文占用 ---------- */
 function updateEnergy(usage) {
   const fill = $('#energy-fill')
   const pct = $('#energy-pct')
   if (!fill || !pct || !usage) return
-  const used = Number(usage.promptTokens ?? usage.totalTokens)
+  // rc.1 TokenUsage：inputTokens 不含缓存命中，上下文占用要加上 cacheReadTokens
+  const used = Number(usage.inputTokens ?? 0) + Number(usage.cacheReadTokens ?? 0) || Number(usage.totalTokens)
   if (!Number.isFinite(used) || used <= 0) return
   const remain = Math.max(0, Math.min(1, 1 - used / state.ctxCap))
   fill.style.height = (remain * 100).toFixed(1) + '%'
@@ -1191,9 +1307,10 @@ function handleSessionEvent(sid, event, replay) {
       appendToolBlock(d.callId, d.name, d.arguments)
       break
     case 'tool/result': {
+      // rc.1：callId 收进 message.content[0]（ToolResultBlock.toolCallId），不再在事件顶层
       const block = Array.isArray(d.message && d.message.content) ? d.message.content[0] : null
       const text = block && Array.isArray(block.content) ? blocksText(block.content) : ''
-      finishToolBlock(d.callId, text, Boolean(d.error) || Boolean(block && block.isError))
+      finishToolBlock(block && block.toolCallId, text, Boolean(d.error) || Boolean(block && block.isError))
       break
     }
     case 'turn/start':
@@ -1224,12 +1341,12 @@ function handleSessionEvent(sid, event, replay) {
   }
 }
 
-/* ---------- 审批 / 提问 ---------- */
-function handleApproval(rpcId, p) {
+/* ---------- 审批 / 提问（$events waterfall，应答值即审批结论/答案对象） ---------- */
+function handleApproval(eventId, p) {
   termLine('审批请求: ' + p.toolName, 't-warn')
   beep(440, 0.1)
   if (state.autoApprove) {
-    rpcRespond(rpcId, { sessionId: p.sessionId, approvalId: p.approvalId, outcome: 'allowed-once' })
+    eventResult(eventId, 'allowed-once')
       .then(() => termLine('自动批准 ' + p.toolName, 't-dim'))
       .catch(e => toast('自动批准失败: ' + e.message, 'err'))
     return
@@ -1243,12 +1360,12 @@ function handleApproval(rpcId, p) {
   l2.textContent = p.reason || '该操作被权限策略拦截，需要你的许可。'
   body.appendChild(l1); body.appendChild(l2)
   openModal('布告栏委托', body, [
-    { label: '拒绝', danger: true, onClick: () => rpcRespond(rpcId, { sessionId: p.sessionId, approvalId: p.approvalId, outcome: 'rejected' }).catch(e => toast(e.message, 'err')) },
-    { label: '允许一次', gold: true, onClick: () => rpcRespond(rpcId, { sessionId: p.sessionId, approvalId: p.approvalId, outcome: 'allowed-once' }).catch(e => toast(e.message, 'err')) },
+    { label: '拒绝', danger: true, onClick: () => eventResult(eventId, 'rejected').catch(e => toast(e.message, 'err')) },
+    { label: '允许一次', gold: true, onClick: () => eventResult(eventId, 'allowed-once').catch(e => toast(e.message, 'err')) },
   ])
 }
 
-function handleQuestion(rpcId, p) {
+function handleQuestion(eventId, p) {
   beep(520, 0.1)
   const qs = p.questions || []
   const answers = new Map()
@@ -1305,7 +1422,7 @@ function handleQuestion(rpcId, p) {
     body.appendChild(wrap)
   }
   openModal(state.npcName + '的提问', body, [
-    { label: '取消', danger: true, onClick: () => rpcRespond(rpcId, { sessionId: p.sessionId, answer: { answers: qs.map(q => ({ id: q.id, selected: [], custom: '取消' })) } }).catch(e => toast(e.message, 'err')) },
+    { label: '取消', danger: true, onClick: () => eventResult(eventId, { answers: qs.map(q => ({ id: q.id, selected: [], custom: '取消' })) }).catch(e => toast(e.message, 'err')) },
     {
       label: '回答', gold: true, onClick: () => {
         const arr = qs.map(q => {
@@ -1313,7 +1430,7 @@ function handleQuestion(rpcId, p) {
           const cus = answers.get(q.id + ':custom') || ''
           return { id: q.id, selected: sel, ...(cus ? { custom: cus } : {}) }
         })
-        rpcRespond(rpcId, { sessionId: p.sessionId, answer: { answers: arr } }).catch(e => toast(e.message, 'err'))
+        eventResult(eventId, { answers: arr }).catch(e => toast(e.message, 'err'))
       }
     },
   ])
@@ -1329,8 +1446,8 @@ function scrollMsgs() {
 async function refreshKeyStatus() {
   const dot = $('#hud-key-dot'), label = $('#hud-key-label')
   try {
-    const v = await rpc('credentials.describe', { refs: [KEY_REF] })
-    const c = v.credentials && v.credentials[KEY_REF]
+    const v = await rpc('credentials/describe', { refs: [KEY_REF] })
+    const c = v && v[KEY_REF]
     if (c && c.configured) {
       dot.className = 'k-dot ok'
       label.textContent = 'API 密钥：已配置' + (c.source ? '（' + c.source + '）' : '')
@@ -1935,7 +2052,7 @@ async function openPluginManager() {
   const presetId = state.agentPreset || 'standard'
   let content = ''
   try {
-    const v = await rpc('agentPreset.read', { agentPreset: presetId })
+    const v = await rpc('agentPresets/read', { agentPreset: presetId })
     content = v.content
   } catch (e) { toast('读取预设失败: ' + e.message, 'err'); return }
   const rows = parsePresetPlugins(content)
@@ -2006,7 +2123,7 @@ function openSettings() {
   saveKey.addEventListener('click', () => {
     const val = input.value.trim()
     if (!val) { toast('未输入密钥', 'err'); return }
-    rpc('credentials.set', { ref: KEY_REF, value: val })
+    rpc('credentials/set', { ref: KEY_REF, value: val })
       .then(() => { toast('密钥已保存，可以开始对话了', 'ok'); input.value = ''; refreshKeyStatus() })
       .catch(e => toast('保存失败: ' + e.message, 'err'))
   })
@@ -2125,8 +2242,10 @@ function openSettings() {
 async function openModelPicker() {
   if (!state.sessionId) return
   let v
-  try { v = await rpc('session.models', { sessionId: state.sessionId }) }
+  try { v = await rpc('session/modelCatalog', {}) }
   catch (e) { toast('读取模型失败: ' + e.message, 'err'); return }
+  // rc.1 目录里 default 是「未配置会话用的默认选择」，即当前生效模型
+  v.current = v.default
   const body = document.createElement('div')
   if (v.failures && v.failures.length > 0) {
     for (const f of v.failures) {
@@ -2138,7 +2257,7 @@ async function openModelPicker() {
     }
   }
   const pick = (provider, model, effort) => {
-    rpc('session.selectModel', { sessionId: state.sessionId, provider, model, ...(effort ? { reasoningEffort: effort } : {}) })
+    rpc('session/selectModel', { request: { sessionId: state.sessionId, provider, model, ...(effort ? { reasoningEffort: effort } : {}) } })
       .then(sel => {
         applyModel(sel.selected)
         toast('已切换到 ' + sel.selected.model, 'ok')
@@ -2188,11 +2307,11 @@ async function openModelPicker() {
     el.textContent = '没有可用模型。请先在设置中配置 API 密钥，或添加自定义提供方。'
     body.appendChild(el)
   }
-  // 已占用路由：session.models 分组 + llm.providers 目录（休眠路由也计入，防止遮蔽既有提供方）
+  // 已占用路由：session/modelCatalog 分组 + llm/listProviders 目录（休眠路由也计入，防止遮蔽既有提供方）
   const takenRoutes = new Set((v.groups || []).map(g => g.id))
   try {
-    const lp = await rpc('llm.providers', {})
-    for (const p of lp.providers || []) takenRoutes.add(p.provider)
+    const lp = await rpc('llm/listProviders', {})
+    for (const p of lp || []) takenRoutes.add(p.id)
   } catch { /* 目录不可用时按已知分组判断，不阻塞入口 */ }
   const addRow = document.createElement('div')
   addRow.className = 'list-row'
@@ -2296,13 +2415,15 @@ function openCustomProviderForm(taken) {
     fetchBtn.disabled = true
     fetchBtn.textContent = '获取中…'
     try {
-      const v = await rpc('llm.discoverModels', {
+      const v = await rpc('llm/discoverModels', {
         settingsNs: CUSTOM_PROVIDER_NS,
-        baseURL,
-        api: protoSelect.value,
-        ...(keyInput.value.trim() ? { apiKey: keyInput.value.trim() } : {}),
+        request: {
+          baseURL,
+          api: protoSelect.value,
+          ...(keyInput.value.trim() ? { apiKey: keyInput.value.trim() } : {}),
+        },
       })
-      const models = v.models || []
+      const models = Array.isArray(v) ? v : (v.models || [])
       if (models.length === 0) { toast('该地址未返回任何模型，请检查地址/协议/密钥', 'err') }
       else {
         discovered = new Map(models.map(m => [m.id, m]))
@@ -2351,8 +2472,8 @@ function openCustomProviderForm(taken) {
         }),
       }
       // 不带 expectedRevision：写入仍经 schema 校验（非法协议/模型当场被拒），且密钥保存失败后重试不会被版本冲突卡死
-      await rpc('settings.mutate', { ns: CUSTOM_PROVIDER_NS, ops: [{ op: 'set', path: ['providers', route], value: profile }] })
-      if (key) await rpc('credentials.set', { ref: keyRef, value: key })
+      await rpc('settings/mutate', { ns: CUSTOM_PROVIDER_NS, ops: [{ op: 'set', path: ['providers', route], value: profile }] })
+      if (key) await rpc('credentials/set', { ref: keyRef, value: key })
       toast('已添加提供方 ' + route + (key ? '（密钥已保存）' : ''), 'ok')
       openModelPicker()
     } catch (e) {
@@ -2387,7 +2508,7 @@ function applyModel(sel) {
 async function openPresetPicker() {
   if (!state.sessionId) return
   let v
-  try { v = await rpc('agentPreset.list', {}) }
+  try { v = await rpc('agentPresets/list', {}) }
   catch (e) { toast('读取预设失败: ' + e.message, 'err'); return }
   const present = new Set((v.presets || []).map(p => p.id))
   const modes = MODE_META.filter(m => present.has(m.id))
@@ -2458,7 +2579,7 @@ async function openPresetPicker() {
   ok.textContent = '选择'
   ok.addEventListener('click', () => {
     if (!selected) return
-    rpc('agentPreset.select', { sessionId: state.sessionId, agentPreset: selected })
+    rpc('agentPresets/select', { agentId: state.sessionId, agentPreset: selected })
         .then(() => {
           state.agentPreset = selected
           $('#main-session-name').textContent = (PRESET_NAMES[selected] || selected)
@@ -2536,10 +2657,23 @@ function applyPickedFolderUI(pathInput, pickHint, items, root) {
   }
 }
 
+/** rc.1 没有 workspace.list 一元调用：开一条临时 workspace/follow 流，取首个 baseline 快照后关闭。 */
+function fetchWorkspaces() {
+  return new Promise((resolve, reject) => {
+    if (!state.ws || state.ws.readyState !== WebSocket.OPEN) { reject(new Error('事件流未连接')); return }
+    const streamId = openStream('workspace/follow', { args: {} }, (value) => {
+      if (value && value.type === 'baseline') {
+        closeStream(streamId)
+        resolve(value.value || { items: [] })
+      }
+    }, (err) => { if (err) reject(err) })
+  })
+}
+
 async function openWorkspace() {
   const body = document.createElement('div')
   try {
-    const ws = await rpc('workspace.list', {})
+    const ws = await fetchWorkspaces()
     const tip = document.createElement('div')
     tip.style.fontSize = '12px'
     tip.style.color = 'var(--stone)'
@@ -2622,7 +2756,7 @@ async function openWorkspace() {
       const p = pathInput.value.trim()
       if (!p) { toast('请输入文件夹路径', 'err'); return }
       addBtn.disabled = true
-      rpc('workspace.create', { path: p })
+      rpc('workspace/create', { request: { path: p } })
         .then(v => {
           toast('已添加工作空间: ' + v.workspace.title, 'ok')
           closeModal()
@@ -2678,12 +2812,13 @@ function openPermission() {
  */
 async function newSession(opts = {}) {
   try {
-    const v = await rpc('session.create', opts.workspaceId ? { workspaceId: opts.workspaceId } : {})
+    const v = await rpc('session/create', { request: opts.workspaceId ? { workspaceId: opts.workspaceId } : {} })
     state.sessionId = v.sessionId
     state.agentPreset = v.agentPreset || null
     state.workspaceTitle = opts.title || null
-    state.historyLoaded = true
+    state.historyLoaded = true   // 新会话无历史；follow 流只接实时事件
     enterMain()
+    followSession(state.sessionId, false)
     refreshKeyStatus().then(ok => {
       if (!ok) {
         appendSysLine('尚未配置 API 密钥：点击右上「设置」保存密钥后即可对话。')
@@ -2699,7 +2834,7 @@ async function newSession(opts = {}) {
 
 async function openContinueList() {
   let v
-  try { v = await rpc('session.list', {}) }
+  try { v = await rpc('session/list', { _request: {} }) }
   catch (e) { toast('读取会话列表失败: ' + e.message, 'err'); return }
   const items = (v.items || []).filter(s => !s.blank && s.origin !== 'subagent')
   const body = document.createElement('div')
@@ -2724,7 +2859,7 @@ async function openContinueList() {
     row.appendChild(main)
     row.addEventListener('click', () => {
       state.sessionId = s.sessionId
-      state.agentPreset = s.agentPreset || null
+      state.agentPreset = (s.projections && s.projections.values && s.projections.values.agentPreset) || null
       state.workspaceTitle = null
       state.historyLoaded = false
       enterMain()
@@ -2753,34 +2888,18 @@ function enterMain() {
   $('#chat-input').focus()
 }
 
-async function loadHistory() {
+/** rc.1 没有 session.history：历史与实时事件同走 session/follow 流（快照回放 + 后续 event 帧）。 */
+function loadHistory() {
   if (!state.sessionId) return
-  try {
-    const v = await rpc('session.history', { sessionId: state.sessionId })
-    state.historyLoaded = true
-    $('#messages').innerHTML = ''
-    state.toolBlocks.clear()
-    state.streamEl = null
-    state.streamWrap = null
-    let lastTodos = null
-    for (const entry of v.events || []) {
-      const ev = entry.event
-      if (ev.type === 'todo/write') lastTodos = ev.data.todos
-      if (ev.type === 'assistant/chunk') continue
-      handleSessionEvent(state.sessionId, ev, true)
-    }
-    if (lastTodos) renderTodos(lastTodos)
-    appendSysLine('—— 历史已加载 ——')
-  } catch (e) {
-    toast('加载历史失败: ' + e.message, 'err')
-  }
+  if (!state.ws || state.ws.readyState !== WebSocket.OPEN) { toast('事件流未连接，稍后自动重试', 'err'); return }
+  followSession(state.sessionId, true)
 }
 
 async function loadModelsForHud() {
   if (!state.sessionId) return
   try {
-    const v = await rpc('session.models', { sessionId: state.sessionId })
-    applyModel(v.current)
+    const v = await rpc('session/modelCatalog', {})
+    applyModel(v.default)
   } catch { /* HUD 显示占位即可 */ }
 }
 
@@ -2796,13 +2915,15 @@ async function sendPrompt() {
   showThinking()
   setRunning(true)
   try {
-    const v = await rpc('session.prompt', {
-      sessionId: state.sessionId,
-      mode: 'queue',
-      content: [{ type: 'text', text }],
-      clientTimeZone: TZ,
+    await rpc('session/prompt', {
+      request: {
+        requestId: crypto.randomUUID(),
+        sessionId: state.sessionId,
+        mode: 'queue',
+        content: [{ type: 'text', text }],
+        clientTimeZone: TZ,
+      },
     })
-    if (v.command && v.command.text) toast(v.command.text)
   } catch (e) {
     setRunning(false)
     hideThinking()
@@ -2814,7 +2935,7 @@ async function sendPrompt() {
 async function cancelTurn() {
   if (!state.sessionId) return
   try {
-    await rpc('session.cancel', { sessionId: state.sessionId })
+    await rpc('session/cancel', { request: { sessionId: state.sessionId } })
     toast('已请求中断', 'ok')
   } catch (e) { toast('中断失败: ' + e.message, 'err') }
 }

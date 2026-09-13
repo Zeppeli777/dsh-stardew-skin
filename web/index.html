@@ -673,6 +673,7 @@ body {
     <div class="top-spacer"></div>
     <button class="pixel-btn btn-sm" id="btn-tab-chat">对话</button>
     <button class="pixel-btn btn-sm" id="btn-tab-term">终端</button>
+    <button class="pixel-btn btn-sm" id="btn-pets" title="一键显示/隐藏所有桌宠；单只开关在「农场伙伴」弹窗里">桌宠:关</button>
     <button class="pixel-btn btn-sm" id="btn-sound">音效:开</button>
     <button class="pixel-btn btn-sm" id="btn-bgm">音乐:关</button>
     <button class="pixel-btn btn-sm" id="btn-settings2">设置</button>
@@ -772,7 +773,8 @@ const state = {
   npcName: localStorage.getItem('stardew.npcName') || '祝尼魔',
   npcPersona: localStorage.getItem('stardew.npcPersona') || '',
   sound: localStorage.getItem('stardew.sound') !== '0',
-  pets: Object.fromEntries(PETS.map(p => [p.id, localStorage.getItem('stardew.pet.' + p.id) !== '0'])),
+  // 桌宠默认关闭（可选开启）：只有用户显式开过（存 '1'）才显示，避免满屏动物挡视线
+  pets: Object.fromEntries(PETS.map(p => [p.id, false])),
   bgmOn: localStorage.getItem('stardew.bgmOn') === '1',
   ws: null,
   wsTimer: null,
@@ -789,6 +791,15 @@ const state = {
 const rawBgmVol = localStorage.getItem('stardew.bgmVol')
 const savedBgmVol = rawBgmVol === null ? NaN : Number(rawBgmVol)
 state.bgmVol = Number.isFinite(savedBgmVol) && savedBgmVol >= 0 && savedBgmVol <= 1 ? savedBgmVol : 0.5
+
+/* 桌宠偏好迁移 v2：旧版启动时会把默认值「开」写进 localStorage，导致改默认关闭后
+   老用户仍满屏动物。首次运行新版本时清掉所有 stardew.pet.* 旧值（无论显式与否），
+   之后以用户的显式开关为准。 */
+if (localStorage.getItem('stardew.pets.v2') !== '1') {
+  PETS.forEach(p => localStorage.removeItem('stardew.pet.' + p.id))
+  localStorage.setItem('stardew.pets.v2', '1')
+}
+PETS.forEach(p => { state.pets[p.id] = localStorage.getItem('stardew.pet.' + p.id) === '1' })
 
 /* ---------- 基础 RPC ---------- */
 class RpcError extends Error {
@@ -1786,6 +1797,18 @@ function setPetVisible(id, on) {
   // 懒加载：首次启用（或守卫移除后重新启用）时挂载 iframe；页面缺失导致的移除会随再次开关重试
   if (state.pets[id]) mountPetFrame(PETS.find(p => p.id === id))
   petPost(id, { type: 'dsh:pet', command: state.pets[id] ? 'resume' : 'pause' })
+  syncPetsBtn()
+}
+/** 顶栏桌宠总开关状态：任一开启即显示「桌宠:开」。 */
+function syncPetsBtn() {
+  const btn = $('#btn-pets')
+  if (btn) btn.textContent = PETS.some(p => state.pets[p.id]) ? '桌宠:开' : '桌宠:关'
+}
+/** 一键全开/全关桌宠（全关是「别挡视线」场景的一键逃生门）。 */
+function toggleAllPets() {
+  const target = !PETS.some(p => state.pets[p.id])
+  PETS.forEach(p => setPetVisible(p.id, target))
+  toast(target ? '桌宠们都出来玩了' : '桌宠们都回谷仓了', 'ok')
 }
 // iframe 通信：按 contentWindow 识别来源桌宠，加载完成（dsh:pet-ready）后下发当前状态完成同步；ack 仅确认送达
 window.addEventListener('message', (ev) => {
@@ -2972,6 +2995,7 @@ $('#btn-bgm').addEventListener('click', () => {
   if (!bgmAudio) { toast('尚未上传背景音乐，请在「设置」中添加', 'err'); return }
   setBgmOn(!state.bgmOn)
 })
+$('#btn-pets').addEventListener('click', toggleAllPets)
 $('#btn-settings2').addEventListener('click', openSettings)
 $('#btn-preset').addEventListener('click', openPresetPicker)
 $('#btn-workspace').addEventListener('click', openWorkspace)

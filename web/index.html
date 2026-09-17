@@ -1811,6 +1811,10 @@ function mountPetFrame(p) {
   f.src = p.page
   f.title = '桌宠：' + p.name
   f.tabIndex = -1
+  // 透明画布：无 allowtransparency 时 Chromium 给 iframe 垫白底；color-scheme:normal 防止深色方案下默认画布变暗
+  f.setAttribute('allowtransparency', 'true')
+  f.style.background = 'transparent'
+  f.style.colorScheme = 'normal'
   f.addEventListener('load', () => {
     try {
       const doc = f.contentDocument

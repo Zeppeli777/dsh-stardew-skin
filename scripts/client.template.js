@@ -148,7 +148,20 @@ body::after {
 body, body *:not(code):not(pre):not(kbd):not(samp) {
   font-family: 'FusionPixel', 'Microsoft YaHei', sans-serif !important;
 }
+/* 代码高亮（shiki）默认前景继承 label-primary——那是给奶油底配的深褐，
+   落在同样深褐的代码块底上就成了「褐字褐底」。这里把代码文字换成奶油沙色，
+   注释/标点也提亮一档；!important 保证压过官方 :root 定义，light/dark 都生效。 */
+:root {
+  --shiki-foreground: #f3dfb0 !important;
+  --shiki-token-comment: #b08d5e !important;
+  --shiki-token-punctuation: #d8c09a !important;
+}
 ::selection { background: #a8331c; color: #fff3d8; }
+/* 代码块横幅的语言标签/Copy 继承 label-primary（奶油底用的深褐），落在深褐横幅上不可读。
+   类名后缀来自官方 CSS Modules，跨版本相对稳定（同 _viewArea 的处理方式）。 */
+[class*="_infostring"], [class*="_copyButton"] {
+  color: #e3b878 !important;
+}
 /* 会话消息流垫近乎实心的奶油纸面（星露谷书信感），保证正文绝对清晰。
    首页无 _viewArea 容器，不受此规则影响；类名后缀来自官方 CSS Modules，跨版本相对稳定。 */
 [class*="_viewArea"] {

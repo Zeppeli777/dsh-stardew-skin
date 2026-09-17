@@ -404,7 +404,7 @@ body {
   color: var(--gold); font-size: 10px; line-height: 11px; text-align: center;
   text-shadow: 1px 1px 0 var(--border);
 }
-.energy-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding-bottom: 2px; }
+.energy-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding-bottom: 2px; text-align: right; align-items: flex-end; }
 .energy-label { font-size: 12px; color: var(--ink-soft); }
 .energy-pct { font-size: 16px; color: var(--grass-dark); }
 .energy-pct.low { color: var(--barn-red); }
@@ -601,16 +601,29 @@ body {
 .wp-dropzone.drag { border-color: var(--grass); color: var(--grass-dark); background: rgba(61,140,64,0.12); }
 /* 背景音乐音量滑块 */
 .bgm-vol { width: 150px; accent-color: var(--grass); cursor: pointer; }
-/* SoundCloud 示例 BGM 迷你播放器 */
+/* SoundCloud 示例 BGM 迷你播放器：带标题栏，可拖动/最小化/关闭 */
 #sc-player {
   position: fixed; left: 10px; bottom: 10px; z-index: 80;
-  width: 330px; height: 120px;
+  width: 330px;
   border: 3px solid var(--border);
   box-shadow: inset 2px 2px var(--panel-light), 0 4px 12px rgba(0,0,0,0.4);
   background: var(--panel);
   display: none;
+  user-select: none;
 }
 #sc-player.sc-on { display: block; }
+#sc-head {
+  display: flex; align-items: center; gap: 6px;
+  padding: 2px 4px 2px 8px;
+  background: var(--border); color: var(--gold);
+  font-size: 12px; cursor: move;
+  touch-action: none;
+}
+#sc-head .sc-title { flex: 1; letter-spacing: 1px; }
+#sc-head .pixel-btn { padding: 0 8px; font-size: 12px; line-height: 18px; }
+#sc-frame { width: 100%; height: 100px; border: 0; display: block; }
+#sc-player.sc-min { width: 200px; }
+#sc-player.sc-min #sc-frame { display: none; }
 /* 视频动态壁纸：铺满视口、静音循环、垫在最底层 */
 #wp-video {
   position: fixed; inset: 0; width: 100%; height: 100%;
@@ -705,22 +718,22 @@ body {
     </div>
     <aside class="hud-col">
       <div class="hud-panel pixel-panel">
-        <div class="hud-title">当前模型</div>
-        <div class="mode-name" id="hud-model-name">…</div>
-        <div class="mode-desc" id="hud-model-desc">点击「模型选择」更换农具。</div>
-        <div class="hud-key" id="hud-key"><span class="k-dot no" id="hud-key-dot"></span><span id="hud-key-label">API 密钥：检查中</span></div>
-      <div class="hud-energy">
-        <div class="energy-bar"><div class="energy-fill" id="energy-fill"></div><div class="energy-cap">E</div></div>
-        <div class="energy-info"><div class="energy-label">上下文能量</div><div class="energy-pct" id="energy-pct">--</div></div>
-      </div>
+        <div class="hud-title">祝尼魔提示</div>
+        <div class="hud-tip">危险操作会贴上布告栏；红心是友谊的印记，金币是账单。</div>
       </div>
       <div class="hud-panel pixel-panel" style="flex:1; overflow-y:auto;">
         <div class="hud-title">任务日志</div>
         <ul class="todo-list" id="todo-list"><li class="todo-empty">（暂无任务）</li></ul>
       </div>
       <div class="hud-panel pixel-panel">
-        <div class="hud-title">祝尼魔提示</div>
-        <div class="hud-tip">危险操作会贴上布告栏；红心是友谊的印记，金币是账单。</div>
+        <div class="hud-title">当前模型</div>
+        <div class="mode-name" id="hud-model-name">…</div>
+        <div class="mode-desc" id="hud-model-desc">点击「模型选择」更换农具。</div>
+        <div class="hud-key" id="hud-key"><span class="k-dot no" id="hud-key-dot"></span><span id="hud-key-label">API 密钥：检查中</span></div>
+      <div class="hud-energy">
+        <div class="energy-info"><div class="energy-label">上下文能量</div><div class="energy-pct" id="energy-pct">--</div></div>
+        <div class="energy-bar"><div class="energy-fill" id="energy-fill"></div><div class="energy-cap">E</div></div>
+      </div>
       </div>
     </aside>
   </div>
@@ -1624,20 +1637,52 @@ const SC_EMBED = 'https://w.soundcloud.com/player/?url=' + encodeURIComponent('h
 function toggleScPlayer() {
   let el = $('#sc-player')
   if (!el) {
-    el = document.createElement('iframe')
+    el = document.createElement('div')
     el.id = 'sc-player'
-    el.title = 'SoundCloud 示例音乐'
-    el.allow = 'autoplay'
+    el.innerHTML = '<div id="sc-head"><span class="sc-title">♪ 示例音乐</span>'
+      + '<button class="pixel-btn btn-sm" id="sc-min" title="最小化">_</button>'
+      + '<button class="pixel-btn btn-sm" id="sc-close" title="关闭">×</button></div>'
+      + '<iframe id="sc-frame" title="SoundCloud 示例音乐" allow="autoplay"></iframe>'
     document.body.appendChild(el)
+    $('#sc-close').addEventListener('click', () => toggleScPlayer())
+    $('#sc-min').addEventListener('click', () => el.classList.toggle('sc-min'))
+    // 标题栏拖动：pointer + mouse 双通道（部分内嵌 webview 只发 mouse 事件），限制在视口内
+    const dragStart = (e) => {
+      if (e.target.closest('button')) return
+      const rect = el.getBoundingClientRect()
+      const dx = e.clientX - rect.left, dy = e.clientY - rect.top
+      el.style.left = rect.left + 'px'
+      el.style.top = rect.top + 'px'
+      el.style.bottom = 'auto'
+      const move = (ev) => {
+        const w = el.offsetWidth, h = el.offsetHeight
+        el.style.left = Math.min(Math.max(0, ev.clientX - dx), window.innerWidth - w) + 'px'
+        el.style.top = Math.min(Math.max(0, ev.clientY - dy), window.innerHeight - h) + 'px'
+      }
+      const up = () => {
+        window.removeEventListener('pointermove', move)
+        window.removeEventListener('pointerup', up)
+        window.removeEventListener('mousemove', move)
+        window.removeEventListener('mouseup', up)
+      }
+      window.addEventListener('pointermove', move)
+      window.addEventListener('pointerup', up)
+      window.addEventListener('mousemove', move)
+      window.addEventListener('mouseup', up)
+    }
+    $('#sc-head').addEventListener('pointerdown', dragStart)
+    $('#sc-head').addEventListener('mousedown', dragStart)
   }
   if (el.classList.contains('sc-on')) {
     el.classList.remove('sc-on')
-    el.src = 'about:blank'
+    $('#sc-frame').src = 'about:blank'
     toast('已收起示例音乐', 'ok')
     return
   }
-  el.src = SC_EMBED
+  $('#sc-frame').src = SC_EMBED
   el.classList.add('sc-on')
+  // 对话界面里默认收成最小条，避免挡住输入框；标题界面里展开
+  el.classList.toggle('sc-min', !$('#screen-main').hidden)
   toast('示例音乐加载中（需要能访问 SoundCloud）', 'ok')
 }
 
@@ -2908,6 +2953,8 @@ function enterMain() {
   $('#main-session-name').textContent = (state.agentPreset && PRESET_NAMES[state.agentPreset]) || '向导'
   if (state.workspaceTitle) $('#main-session-name').textContent += '@' + state.workspaceTitle
   appendSysLine('欢迎来到星露谷！我是你的' + state.npcName + '。')
+  const sc = $('#sc-player')
+  if (sc) sc.classList.add('sc-min')
   $('#chat-input').focus()
 }
 
@@ -2971,6 +3018,8 @@ function switchTab(tab) {
 function backToTitle() {
   $('#screen-main').hidden = true
   $('#screen-title').hidden = false
+  const sc = $('#sc-player')
+  if (sc) sc.classList.remove('sc-min')
 }
 
 /* ---------- 绑定 ---------- */

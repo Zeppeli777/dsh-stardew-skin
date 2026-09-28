@@ -8,24 +8,29 @@
 
 ![标题屏](screenshots/title.png)
 
-![主界面（rc.1 实测）](screenshots/rc1-main.png)
+![主界面（0.1.7 实测）](screenshots/main-017.png)
 
 ## 功能一览
 
 - **标准 dsh 插件包**：入口 `index.js` 导出 `apply(ctx)`，`cordis.patch.yml` 声明 `dsh.bundle` 补丁层，一条 `dsh plugin --profile web add dsh-theme-stardew-fullskin` 即可安装/卸载，不改动 dsh 安装中的任何文件。
-- **不是纯皮肤**：主题直连 dsh 宿主的 Typert 网关协议（0.1.2-rc.1：一元调用 `POST /api/<ns>/<method>`，事件走 WebSocket `/api/remote.mux` 多路复用流——`$events` 广播/审批瀑布 + `session/follow` 会话日志），会话创建、消息发送、流式输出、工具审批、模型切换、工作空间管理全部真实可用。
+- **不是纯皮肤**：主题直连 dsh 宿主的 Typert 网关协议（一元调用 `POST /api/<ns>/<method>`，事件走 WebSocket `/api/remote.mux` 多路复用流——`$events` 广播/审批瀑布 + `session/follow` 会话日志），会话创建、消息发送、流式输出、工具审批、模型切换、工作空间管理全部真实可用。
+- **农场日历系统**：会话即游戏日——每开一个新存档，星露谷历法（四季 × 每季 28 天）就推进一天；顶栏日历木牌随季节换色，点击打开 28 日月历与「今日运势」（TV 占卜风）；换季时全屏横幅 + 号角音效 + 壁纸季节色调，并有花瓣（春）/萤火（夏）/落叶（秋）/雪花（冬）四季天气粒子，均可在设置里关闭。
 - **四块农场 = 四个 Agent 预设**：标准农场（standard，全功能编码代理）、河边农场（code，Code Mode SDK）、森林农场（minimal，极简双工具）、山顶农场（cordis，自定义 preset 模板）。模式选择弹窗 1:1 复刻游戏内「建人物 + 选农场」界面，配官方农场地图图标。
 - **上下文能量条**：HUD 里的游戏能量条实时显示上下文余量（按最近一轮 prompt tokens / 标称上下文估算，默认 128K，可用 `localStorage stardew.ctxCap` 调整）。
 - **五只农场伙伴桌宠**：小鸡（蹦跳）、虚空鸡（漂浮）、史莱姆（挤压跳）、猫咪（游走+坐下）、蝴蝶（飞舞）。**默认关闭、可选开启**：顶栏「桌宠」按钮一键全开/全关，单只开关在标题屏「农场伙伴」弹窗里，偏好刷新后保持。
-- **8-bit 音效引擎**：纯 WebAudio 振荡器合成，零音频文件；助手回复、审批请求、提问、失败各有提示音，顶栏一键开关。
+- **8-bit 音效引擎**：纯 WebAudio 振荡器合成，零音频文件；助手回复、审批请求、提问、失败、换季各有提示音，顶栏一键开关。
 - **壁纸 / BGM**：默认 AI 生成的星露谷风像素山谷壁纸；支持自定义图片/GIF/视频壁纸（IndexedDB），自定义 BGM 上传循环播放，另有「示例 BGM ♪」内嵌 SoundCloud 播放器（ConcernedApe - Spring (The Valley Comes Alive)，需能访问 soundcloud.com）。
+
+![农场日历弹窗](screenshots/calendar.png)
+
+![换季横幅·夏天来了](screenshots/season-banner.png)
 
 ### 概念映射
 
 | 官方 UI 概念 | 星露谷主题映射 |
 | --- | --- |
 | Agent Preset（预设） | 农场选择：标准 / 河边 / 森林 / 山顶 |
-| 会话（Session） | 存档 / 新的一天 |
+| 会话（Session） | 存档 / 新的一天（每开新存档推进星露谷日历一天） |
 | 用户消息 | 农夫 |
 | 助手 | 祝尼魔 |
 | 工具审批请求 | 布告栏委托 |
@@ -36,7 +41,8 @@
 ## 安装
 
 ```
-# 环境：dsh CLI ≥ 0.1.2-rc.1（协议与该版本匹配；旧版 dsh 请用历史提交），Node.js ^22.19 || >=24 与 pnpm
+# 环境：dsh CLI 0.1.2-rc.1 ~ 0.1.7-rc.2 实测兼容（沙箱端到端验证：
+# 会话/流式输出/工具调用/预设/模型切换/存档列表；旧版 dsh 请用历史提交），Node.js ^22.19 || >=24 与 pnpm
 # 1. 把主题作为插件安装进 web profile
 dsh plugin --profile web add dsh-theme-stardew-fullskin
 

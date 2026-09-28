@@ -659,10 +659,96 @@ body {
 .toast.err { color: var(--barn-red); }
 .toast.ok { color: var(--grass-dark); }
 
+/* ---------- 农场日历 / 天气系统 ---------- */
+/* 季节色罩：压在壁纸（z-index -1）之上、界面之下，换季时平滑过渡 */
+#season-tint {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  transition: background 1.4s ease;
+}
+/* 天气粒子画布：盖在界面之上（花瓣/萤火/落叶/雪），在桌宠层与弹窗之下 */
+#weather-canvas {
+  position: fixed; inset: 0; z-index: 89; pointer-events: none;
+}
+/* 顶栏日历木牌：季节名 chip + 年月日 + 星期 */
+.cal-plaque {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 10px 2px 4px;
+  border: 2px solid var(--border);
+  background: var(--panel-light);
+  color: var(--ink);
+  font-family: inherit; font-size: 12px;
+  cursor: pointer;
+  box-shadow: inset 1px 1px #d98f4a, inset -1px -1px var(--panel-dark);
+  text-shadow: none;
+  white-space: nowrap;
+}
+.cal-plaque:hover { filter: brightness(1.08); }
+.cal-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px;
+  color: #fff8e0; font-size: 11px;
+  border: 1px solid var(--border);
+  text-shadow: 1px 1px 0 var(--border);
+}
+.cal-chip.spring { background: #5da646; }
+.cal-chip.summer { background: #3f8fb5; }
+.cal-chip.fall   { background: #c9701d; }
+.cal-chip.winter { background: #7f9fc9; }
+.title-foot .cal-plaque { font-size: 11px; padding: 1px 8px 1px 3px; margin-left: 10px; }
+/* 换季横幅：全屏中央滑入再滑出 */
+#season-banner {
+  position: fixed; left: 50%; top: 24%; transform: translateX(-50%);
+  z-index: 150; pointer-events: none;
+  padding: 12px 42px;
+  background: var(--panel-light);
+  border: 3px solid var(--border);
+  box-shadow: 4px 4px 0 rgba(74, 36, 8, 0.45), inset 2px 2px #d98f4a;
+  color: var(--ink); font-size: 26px; letter-spacing: 8px;
+  text-shadow: 1px 1px 0 var(--gold);
+  opacity: 0;
+}
+#season-banner.show { animation: season-banner 3.2s ease forwards; }
+@keyframes season-banner {
+  0% { opacity: 0; transform: translateX(-50%) translateY(-26px); }
+  14% { opacity: 1; transform: translateX(-50%) translateY(0); }
+  82% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(14px); }
+}
+/* 日历弹窗：28 天 7×4 月历 */
+.cal-weekhead {
+  display: grid; grid-template-columns: repeat(7, 34px); gap: 4px;
+  margin-bottom: 4px;
+}
+.cal-weekhead span { text-align: center; font-size: 11px; color: var(--ink-soft); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 34px); gap: 4px; }
+.cal-cell {
+  height: 34px; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: var(--ink);
+  background: rgba(251, 228, 176, 0.55);
+  border: 1px solid rgba(74, 36, 8, 0.3);
+}
+.cal-cell.past { opacity: 0.45; }
+.cal-cell.today {
+  background: var(--gold);
+  border: 2px solid var(--border);
+  font-weight: bold;
+  box-shadow: inset 0 0 0 2px #fff3d8;
+  opacity: 1;
+}
+.cal-fortune {
+  margin-top: 10px; padding: 8px 10px;
+  background: rgba(251, 228, 176, 0.75);
+  border: 1px solid var(--border);
+  font-size: 13px; color: var(--ink); line-height: 1.6;
+}
+.cal-fortune .f-title { color: var(--grass-dark); font-weight: bold; }
+
     </style>
   </head>
   <body>
     <video id="wp-video" autoplay loop muted playsinline></video>
+    <div id="season-tint"></div>
+    <canvas id="weather-canvas"></canvas>
 
 <!-- ============ 标题屏 ============ -->
 <section id="screen-title" class="screen">
@@ -674,7 +760,7 @@ body {
     <button class="menu-item" data-action="settings">设置</button>
     <button class="menu-item" data-action="deskpet">农场伙伴</button>
   </nav>
-  <div class="title-foot"><span class="conn-dot" id="conn-dot"></span><span id="conn-label">连接中…</span></div>
+  <div class="title-foot"><span class="conn-dot" id="conn-dot"></span><span id="conn-label">连接中…</span><button class="cal-plaque" id="cal-plaque-title" title="星露谷日历">…</button></div>
 </section>
 
 <!-- ============ 主屏 ============ -->
@@ -683,6 +769,7 @@ body {
     <button class="pixel-btn btn-sm" id="btn-to-title">&lt; 返回</button>
     <div class="main-title" id="main-session-name">祝尼魔</div>
     <div class="mode-badge" id="mode-badge">…</div>
+    <button class="cal-plaque" id="cal-plaque" title="星露谷日历：会话即游戏日，点开看月历与运势">…</button>
     <div class="top-spacer"></div>
     <button class="pixel-btn btn-sm" id="btn-tab-chat">对话</button>
     <button class="pixel-btn btn-sm" id="btn-tab-term">终端</button>
@@ -746,7 +833,8 @@ body {
 
 <script>
 /* ============================================================
-   星露谷 UI 原生客户端：直接对话 dsh web 的 /api Typert 网关（0.1.2-rc.1）
+   星露谷 UI 原生客户端：直接对话 dsh web 的 /api Typert 网关
+   （0.1.2-rc.1 ~ 0.1.7-rc.2 实测兼容）
    一元调用 POST /api/<namespace>/<method>，payload 为 {args:{...}}；
    事件流 WebSocket /api/remote.mux（open/item/end/error 多路复用帧），
    广播与需应答事件走 $events 流，会话日志走 session/follow 流。
@@ -813,6 +901,241 @@ if (localStorage.getItem('stardew.pets.v2') !== '1') {
   localStorage.setItem('stardew.pets.v2', '1')
 }
 PETS.forEach(p => { state.pets[p.id] = localStorage.getItem('stardew.pet.' + p.id) === '1' })
+
+/* ---------- 农场日历：会话即游戏日 ---------- */
+/* 星露谷历法：一年四季、每季 28 天、每周 7 天。每创建一个新存档（新会话）
+   就推进一天；换季时全屏横幅 + 音效，日期与偏好存 localStorage。
+   桌面日历牌（顶栏/标题屏）点击可打开 28 日月历与今日运势。 */
+const SEASONS = [
+  { id: 'spring', name: '春', word: '春天来了', tint: 'rgba(126, 188, 88, 0.13)', hue: '#5da646' },
+  { id: 'summer', name: '夏', word: '夏天来了', tint: 'rgba(63, 143, 181, 0.12)', hue: '#3f8fb5' },
+  { id: 'fall',   name: '秋', word: '秋天来了', tint: 'rgba(201, 112, 29, 0.14)', hue: '#c9701d' },
+  { id: 'winter', name: '冬', word: '冬天来了', tint: 'rgba(127, 159, 201, 0.15)', hue: '#7f9fc9' },
+]
+const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+/** 每日运势：游戏 TV 占卜的口吻；按 (年,季,日) 确定性抽取，同一天内人人一致。 */
+const FORTUNES = {
+  good: [
+    '星之果实今天格外饱满——冒险与收割都会顺利。',
+    '祝尼魔们在暗中帮你搬东西，今天做事事半功倍。',
+    '矿洞的电梯今天特别快，运气站在你这边。',
+    '今天的雨水平稳又温柔，作物会记得你的好。',
+  ],
+  normal: [
+    '精灵们今天心情平平，稳步耕作即可。',
+    '风从南边来，不急不躁——适合整理仓库和回信。',
+    '今天海水的味道一般，钓鱼佬宜守不宜进。',
+    '普普通通的一天，但普普通通也是种运气。',
+  ],
+  bad: [
+    '乌鸦在田里开会……今天不宜冒险，留意脚下。',
+    '石头今天特别硬，敲矿请三思。',
+    '云层压得很低，精灵们都在打盹——重要的事改天再做。',
+    '今天的运气像漏水的屋顶，出门记得带伞。',
+  ],
+}
+const LUCKY_COLORS = ['谷仓红', '草绿', '金黄', '海蓝', '奶油白', '南瓜橙', '莓果紫']
+
+state.weather = localStorage.getItem('stardew.weather') !== '0'   // 天气粒子
+state.seasonTint = localStorage.getItem('stardew.seasonTint') !== '0' // 季节色调
+
+function loadCalendar() {
+  try {
+    const c = JSON.parse(localStorage.getItem('stardew.calendar'))
+    if (c && Number.isInteger(c.year) && Number.isInteger(c.day) && c.season >= 0 && c.season < 4) return c
+  } catch { /* 损坏即重置 */ }
+  return { year: 1, season: 0, day: 1 }
+}
+state.cal = loadCalendar()
+function saveCalendar() { localStorage.setItem('stardew.calendar', JSON.stringify(state.cal)) }
+function seasonOf() { return SEASONS[state.cal.season] }
+/** 星露谷星期：1 日固定为周一。 */
+function weekdayOf(day) { return WEEKDAYS[(day - 1) % 7] }
+function calDateLabel() { return '第' + state.cal.year + '年 ' + seasonOf().name + state.cal.day + '日' }
+/**
+ * 推进一天（新存档 = 星露谷的新一天）。
+ * @returns {{seasonChanged: boolean, yearRolled: boolean}} 供调用方播报换季/新年。
+ */
+function advanceDay() {
+  const prevSeason = state.cal.season
+  state.cal.day += 1
+  let seasonChanged = false, yearRolled = false
+  if (state.cal.day > 28) {
+    state.cal.day = 1
+    state.cal.season = (state.cal.season + 1) % 4
+    seasonChanged = true
+    if (state.cal.season === 0) { state.cal.year += 1; yearRolled = true }
+  }
+  saveCalendar()
+  applySeasonLook()
+  if (seasonChanged) seasonFanfare(seasonOf(), yearRolled)
+  return { seasonChanged, yearRolled }
+}
+/** 今日运势：运气三档 + 幸运色 + 幸运数字，由 (年,季,日) 哈希决定。 */
+function dailyFortune() {
+  const h = (state.cal.year * 4096 + state.cal.season * 28 + state.cal.day) * 2654435761 >>> 0
+  const luck = h % 100
+  const pool = luck < 40 ? FORTUNES.good : luck < 82 ? FORTUNES.normal : FORTUNES.bad
+  const text = pool[(h >>> 8) % pool.length]
+  const color = LUCKY_COLORS[(h >>> 16) % LUCKY_COLORS.length]
+  const number = (h >>> 24) % 28 + 1
+  return { text, color, number, luck }
+}
+function renderCalPlaque() {
+  const s = seasonOf()
+  const html = '<span class="cal-chip ' + s.id + '">' + s.name + '</span>'
+    + calDateLabel().replace(' ', '') + ' · ' + weekdayOf(state.cal.day)
+  for (const id of ['cal-plaque', 'cal-plaque-title']) {
+    const el = document.getElementById(id)
+    if (el) el.innerHTML = html
+  }
+}
+/** 季节视觉：色罩 + 粒子重置 + 日历牌刷新。 */
+function applySeasonLook() {
+  renderCalPlaque()
+  const s = seasonOf()
+  $('#season-tint').style.background = state.seasonTint ? s.tint : 'transparent'
+  resetWeather()
+}
+function seasonFanfare(s, yearRolled) {
+  showSeasonBanner(s.word + (yearRolled ? ' · 新的一年开始了' : ''))
+  if (state.sound) {
+    // 上行三连音：季节交替的小小号角
+    beep(392, 0.12); setTimeout(() => beep(523, 0.12), 130); setTimeout(() => beep(659, 0.2), 260)
+  }
+}
+function showSeasonBanner(text) {
+  let el = $('#season-banner')
+  if (!el) {
+    el = document.createElement('div')
+    el.id = 'season-banner'
+    document.body.appendChild(el)
+  }
+  el.textContent = text
+  el.classList.remove('show')
+  void el.offsetWidth   // 重启动画
+  el.classList.add('show')
+}
+/** 日历弹窗：28 日月历 + 今日运势。 */
+function openCalendar() {
+  const body = document.createElement('div')
+  const s = seasonOf()
+  const head = document.createElement('div')
+  head.className = 'cal-weekhead'
+  for (const w of WEEKDAYS) {
+    const sp = document.createElement('span')
+    sp.textContent = w
+    head.appendChild(sp)
+  }
+  const grid = document.createElement('div')
+  grid.className = 'cal-grid'
+  for (let d = 1; d <= 28; d++) {
+    const cell = document.createElement('div')
+    cell.className = 'cal-cell' + (d < state.cal.day ? ' past' : '') + (d === state.cal.day ? ' today' : '')
+    cell.textContent = d
+    cell.title = weekdayOf(d)
+    grid.appendChild(cell)
+  }
+  const f = dailyFortune()
+  const fortune = document.createElement('div')
+  fortune.className = 'cal-fortune'
+  fortune.innerHTML = '<span class="f-title">今日运势（' + calDateLabel() + ' ' + weekdayOf(state.cal.day) + '）</span><br>'
+    + f.text + '<br>幸运色：' + f.color + ' · 幸运数字：' + f.number
+  body.appendChild(head); body.appendChild(grid); body.appendChild(fortune)
+  openModal('星露谷日历 · ' + calDateLabel(), body, [{ label: '关闭', onClick: () => {} }])
+}
+
+/* ---------- 天气粒子：花瓣 / 萤火 / 落叶 / 雪 ---------- */
+const weatherFx = { canvas: null, ctx: null, parts: [], raf: 0, dpr: 1 }
+function weatherConf() {
+  const id = seasonOf().id
+  if (id === 'spring') return { count: 26, colors: ['#f6c6d9', '#fad2e2', '#f3b3cc'], shape: 'petal', speed: 0.45 }
+  if (id === 'summer') return { count: 18, colors: ['#fff3b0', '#ffe97a', '#d8f0a0'], shape: 'fly', speed: 0.18 }
+  if (id === 'fall')   return { count: 22, colors: ['#d9822b', '#c9701d', '#b85a1a', '#e0a13c'], shape: 'leaf', speed: 0.6 }
+  return { count: 40, colors: ['#ffffff', '#f3f8ff', '#e8f1fb'], shape: 'snow', speed: 0.5 }
+}
+function makeParticle(conf, spawnTop) {
+  const w = innerWidth, h = innerHeight
+  return {
+    x: Math.random() * w,
+    y: spawnTop ? -12 : Math.random() * h,
+    size: conf.shape === 'fly' ? 1.6 + Math.random() * 1.8 : 3 + Math.random() * 4,
+    vy: (0.35 + Math.random() * 0.65) * conf.speed,
+    vx: (Math.random() - 0.5) * 0.3,
+    rot: Math.random() * Math.PI * 2,
+    vr: (Math.random() - 0.5) * 0.03,
+    phase: Math.random() * Math.PI * 2,
+    color: conf.colors[(Math.random() * conf.colors.length) | 0],
+  }
+}
+function weatherFrame() {
+  const c = weatherFx.canvas, ctx = weatherFx.ctx
+  ctx.clearRect(0, 0, c.width, c.height)
+  const conf = weatherConf()
+  for (const p of weatherFx.parts) {
+    p.phase += 0.02
+    p.y += p.vy
+    p.x += p.vx + (conf.shape === 'fly' ? Math.sin(p.phase * 1.7) * 0.5 : Math.sin(p.phase) * 0.35)
+    p.rot += p.vr
+    if (p.y > innerHeight + 14 || p.x < -20 || p.x > innerWidth + 20) Object.assign(p, makeParticle(conf, true))
+    ctx.save()
+    ctx.translate(p.x, p.y)
+    ctx.globalAlpha = conf.shape === 'fly' ? 0.35 + Math.abs(Math.sin(p.phase)) * 0.6 : 0.75
+    ctx.fillStyle = p.color
+    if (conf.shape === 'petal') {
+      ctx.rotate(p.rot)
+      ctx.beginPath(); ctx.ellipse(0, 0, p.size, p.size * 0.55, 0, 0, Math.PI * 2); ctx.fill()
+    } else if (conf.shape === 'leaf') {
+      ctx.rotate(p.rot)
+      ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2)
+    } else if (conf.shape === 'fly') {
+      ctx.shadowColor = p.color; ctx.shadowBlur = 6
+      ctx.beginPath(); ctx.arc(0, 0, p.size, 0, Math.PI * 2); ctx.fill()
+    } else {
+      ctx.beginPath(); ctx.arc(0, 0, p.size * 0.8, 0, Math.PI * 2); ctx.fill()
+    }
+    ctx.restore()
+  }
+  weatherFx.raf = requestAnimationFrame(weatherFrame)
+}
+function resetWeather() {
+  if (!weatherFx.canvas) {
+    weatherFx.canvas = $('#weather-canvas')
+    weatherFx.ctx = weatherFx.canvas.getContext('2d')
+    const fit = () => {
+      weatherFx.dpr = Math.min(devicePixelRatio || 1, 2)
+      weatherFx.canvas.width = innerWidth * weatherFx.dpr
+      weatherFx.canvas.height = innerHeight * weatherFx.dpr
+      weatherFx.ctx.setTransform(weatherFx.dpr, 0, 0, weatherFx.dpr, 0, 0)
+    }
+    fit()
+    weatherFx.canvas.__fit = fit
+    addEventListener('resize', fit)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) { cancelAnimationFrame(weatherFx.raf); weatherFx.raf = 0 }
+      else if (state.weather && !weatherFx.raf) weatherFx.raf = requestAnimationFrame(weatherFrame)
+    })
+  }
+  weatherFx.canvas.__fit()
+  cancelAnimationFrame(weatherFx.raf)
+  weatherFx.raf = 0
+  // 系统开了「减少动态效果」时把粒子视为关闭（用户仍可显式打开，尊重 setWeather 的显式值）
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (!state.weather || reduced) return
+  const conf = weatherConf()
+  weatherFx.parts = Array.from({ length: conf.count }, () => makeParticle(conf, false))
+  weatherFx.raf = requestAnimationFrame(weatherFrame)
+}
+function setWeather(on) {
+  state.weather = on
+  localStorage.setItem('stardew.weather', on ? '1' : '0')
+  resetWeather()
+}
+function setSeasonTint(on) {
+  state.seasonTint = on
+  localStorage.setItem('stardew.seasonTint', on ? '1' : '0')
+  applySeasonLook()
+}
 
 /* ---------- 基础 RPC ---------- */
 class RpcError extends Error {
@@ -2287,6 +2610,37 @@ function openSettings() {
   scBtn.addEventListener('click', toggleScPlayer)
   bgmRow.appendChild(scBtn)
 
+  // 农场日历区：天气粒子与季节色调开关（日期与运势见顶栏日历牌）
+  const secCal = document.createElement('div')
+  secCal.className = 'set-section'
+  secCal.textContent = '农场日历'
+  const wxBtn = document.createElement('button')
+  wxBtn.className = 'pixel-btn btn-sm'
+  wxBtn.textContent = '天气粒子：' + (state.weather ? '开' : '关')
+  wxBtn.title = '按季节飘落花瓣/萤火/落叶/雪（设置即时生效）'
+  wxBtn.addEventListener('click', () => {
+    setWeather(!state.weather)
+    wxBtn.textContent = '天气粒子：' + (state.weather ? '开' : '关')
+    toast(state.weather ? '天气粒子已开启' : '天气粒子已关闭', 'ok')
+  })
+  const tintBtn = document.createElement('button')
+  tintBtn.className = 'pixel-btn btn-sm'
+  tintBtn.textContent = '季节色调：' + (state.seasonTint ? '开' : '关')
+  tintBtn.title = '给壁纸叠一层当前季节的色调（春绿/夏蓝/秋橙/冬蓝白）'
+  tintBtn.addEventListener('click', () => {
+    setSeasonTint(!state.seasonTint)
+    tintBtn.textContent = '季节色调：' + (state.seasonTint ? '开' : '关')
+    toast(state.seasonTint ? '季节色调已开启' : '季节色调已关闭', 'ok')
+  })
+  const calBtn = document.createElement('button')
+  calBtn.className = 'pixel-btn btn-sm'
+  calBtn.textContent = '打开日历'
+  calBtn.title = '查看 28 日月历与今日运势'
+  calBtn.addEventListener('click', openCalendar)
+  const calRow = document.createElement('div')
+  calRow.className = 'wp-drop'
+  calRow.appendChild(wxBtn); calRow.appendChild(tintBtn); calRow.appendChild(calBtn)
+
   // 插件管理区
   const secPj = document.createElement('div')
   secPj.className = 'set-section'
@@ -2299,6 +2653,7 @@ function openSettings() {
   body.appendChild(row1); body.appendChild(keyActions); body.appendChild(info)
   body.appendChild(secWp); body.appendChild(wpRow)
   body.appendChild(secBgm); body.appendChild(bgmRow)
+  body.appendChild(secCal); body.appendChild(calRow)
   body.appendChild(secPj); body.appendChild(pjBtn)
   openModal('设置', body, [
     // 「保存密钥」已从弹窗底部上移至密钥区；底部仅剩「关闭」，flex-end 使其占据最右位置
@@ -2890,6 +3245,13 @@ async function newSession(opts = {}) {
     state.workspaceTitle = opts.title || null
     state.historyLoaded = true   // 新会话无历史；follow 流只接实时事件
     enterMain()
+    // 新存档 = 星露谷的新一天：推进日历并播报今日运势（换季横幅在 advanceDay 内触发）
+    const day = advanceDay()
+    const f = dailyFortune()
+    appendSysLine('—— ' + calDateLabel() + '（' + weekdayOf(state.cal.day) + '）——')
+    appendSysLine('今日运势：' + f.text + ' 幸运色：' + f.color + ' · 幸运数字：' + f.number)
+    if (day.yearRolled) termLine('新的一年开始了：第' + state.cal.year + '年春天第一天')
+    else if (day.seasonChanged) termLine(seasonOf().word)
     followSession(state.sessionId, false)
     refreshKeyStatus().then(ok => {
       if (!ok) {
@@ -3050,6 +3412,10 @@ $('#btn-bgm').addEventListener('click', () => {
 })
 $('#btn-pets').addEventListener('click', toggleAllPets)
 $('#btn-settings2').addEventListener('click', openSettings)
+for (const id of ['cal-plaque', 'cal-plaque-title']) {
+  const el = document.getElementById(id)
+  if (el) el.addEventListener('click', openCalendar)
+}
 $('#btn-preset').addEventListener('click', openPresetPicker)
 $('#btn-workspace').addEventListener('click', openWorkspace)
 $('#btn-perm').addEventListener('click', openPermission)
@@ -3068,6 +3434,7 @@ applyBgm()
 applyNpcName(state.npcName)
 applyNpcAvatar()
 applyNpcPersona(state.npcPersona)
+applySeasonLook()
 PETS.forEach(p => setPetVisible(p.id, state.pets[p.id]))
 $('#btn-bgm').textContent = state.bgmOn ? '音乐:开' : '音乐:关'
 connectWs()

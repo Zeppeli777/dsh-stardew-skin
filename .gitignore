@@ -3,3 +3,4 @@ reference-terraria/
 *.log
 .DS_Store
 Thumbs.db
+.v2c/

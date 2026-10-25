@@ -1,4 +1,4 @@
-# dsh-theme-stardew bundle patch: insert the theme's loader row so the web
+# dsh-theme-stardew-valley bundle patch: insert the theme's loader row so the web
 # host's client-modules service discovers this package's `dsh.client`
 # declaration and serves its browser bundle. The row mounts the host half
 # (lib/index.js), which is intentionally a no-op: the theme lives entirely
@@ -7,4 +7,4 @@
 
 - insert:
     - id: stardew-theme
-      name: dsh-theme-stardew
+      name: dsh-theme-stardew-valley

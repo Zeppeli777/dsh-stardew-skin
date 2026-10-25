@@ -1,4 +1,4 @@
-# dsh-theme-stardew · 星露谷物语主题（组件替换版）
+# dsh-theme-stardew-valley · 星露谷物语主题（组件替换版）
 
 把 DeepSeek Harness 的 Web UI 刷成星露谷物语配色：像素字体、山谷壁纸、奶油色面板、木质按钮——**不替换官方前端**，官方 React UI 的每一项功能原样保留。
 
@@ -25,7 +25,7 @@
 ```bash
 # 环境：dsh CLI 0.1.2-rc.1 ~ 0.2.1-rc.3 实测兼容（dsh --version 确认；
 # 主题走官方 overrideTokens 机制与 --dsw-* token，跨 0.1.x / 0.2.x 版本稳定）
-dsh plugin --profile web add dsh-theme-stardew        # 从 npm / 插件源
+dsh plugin --profile web add dsh-theme-stardew-valley  # 从 npm / 插件源
 # 或本地目录：
 dsh plugin --profile web add /path/to/dsh-stardew-skin
 dsh web                                                # 重启后生效
@@ -36,7 +36,7 @@ dsh web                                                # 重启后生效
 ## 卸载
 
 ```bash
-dsh plugin --profile web remove dsh-theme-stardew
+dsh plugin --profile web remove dsh-theme-stardew-valley
 dsh web   # 重启后恢复官方默认外观
 ```
 
@@ -47,8 +47,8 @@ dsh plugin add
   └─ package.json: dsh.client { platform: web, immediately, inject: [theme] }
   └─ cordis.patch.yml  → 向 bundle 插入 { id: stardew-theme }
        └─ lib/client.js（浏览器端）
-            ├─ 注入 <style id="dsh-theme-stardew">：@font-face + body 壁纸 + 像素字体
-            └─ ctx.theme.overrideTokens('dsh-theme-stardew', { '--dsw-alias-*': { light, dark }, ... })
+            ├─ 注入 <style id="dsh-theme-stardew-valley">：@font-face + body 壁纸 + 像素字体
+            └─ ctx.theme.overrideTokens('dsh-theme-stardew-valley', { '--dsw-alias-*': { light, dark }, ... })
 ```
 
 主题层由官方 presenter 以 `body.style.setProperty()` 应用，跟随官方主题系统生命周期，升级 dsh 不丢。
@@ -81,7 +81,7 @@ node scripts/build-client.mjs   # 把 assets/ 的字体+壁纸转 base64 填入 
 > 🔀 本分支（`main`）是**组件替换版**。完全替换版（祝尼魔对话、农场选模式、能量条 HUD、桌宠、8-bit 音效）在 [`fullskin`](../../tree/fullskin) 分支，该分支的仓库根就是插件包：
 > `dsh plugin --profile web add github:Zeppeli777/dsh-stardew-skin#fullskin`
 
-| | **dsh-theme-stardew**（本分支） | fullskin 分支（整皮版） |
+| | **dsh-theme-stardew-valley**（本分支） | fullskin 分支（整皮版） |
 | --- | --- | --- |
 | 机制 | 官方 token 覆盖 | 整体替换伺服的前端 |
 | 官方新功能 | 自动跟随 | 需手动追版 |

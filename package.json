@@ -1,5 +1,5 @@
 {
-  "name": "dsh-theme-stardew",
+  "name": "dsh-theme-stardew-valley",
   "version": "0.2.1",
   "description": "Stardew Valley theme for the DeepSeek Harness Web UI: an official-mechanism client theme that stacks a Stardew alias-token layer over the active theme, with pixel font and valley wallpaper. No dist replacement — the official React UI stays intact.",
   "type": "module",
@@ -23,6 +23,14 @@
     "web-ui"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zeppeli777/dsh-stardew-skin.git"
+  },
+  "homepage": "https://github.com/Zeppeli777/dsh-stardew-skin/tree/main#readme",
+  "bugs": {
+    "url": "https://github.com/Zeppeli777/dsh-stardew-skin/issues"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"

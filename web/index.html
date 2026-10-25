@@ -195,7 +195,7 @@ body {
 }
 .msg.bot .msg-name { font-size: 12px; font-weight: bold; color: var(--grass-dark); margin-bottom: 6px; }
 /* 消息/思考/工具输出文本可选中复制（body 全局 user-select:none 的例外区） */
-.msg-text, .tool-body, .msg-reasoning .r-body { user-select: text; }
+.msg-text, .tool-sec pre, .msg-reasoning .r-body { user-select: text; }
 .msg-name { display: flex; align-items: center; gap: 8px; }
 /* 消息复制按钮：随名牌行右置，悬停金色高亮 */
 .msg-copy {
@@ -204,6 +204,8 @@ body {
 }
 .msg-copy:hover { color: var(--barn-red); border-color: var(--barn-red); }
 .msg.bot .msg-text { white-space: pre-wrap; word-break: break-word; line-height: 1.55; font-size: 20px; color: var(--ink); }
+/* markdown 正文接管排版：关闭 pre-wrap，间距交给 .md 内元素 */
+.msg.bot .msg-text.md { white-space: normal; }
 .msg-reasoning {
   margin-bottom: 8px;
   border: 2px solid var(--frame);
@@ -211,6 +213,7 @@ body {
   padding: 4px 8px;
 }
 .msg-reasoning summary { font-size: 12px; color: var(--ink-soft); cursor: pointer; user-select: none; }
+.msg-reasoning summary.live { color: var(--grass-dark); font-weight: bold; }
 .msg-reasoning .r-body { font-size: 13px; color: var(--ink-soft); white-space: pre-wrap; word-break: break-word; line-height: 1.5; margin-top: 4px; max-height: 200px; overflow-y: auto; }
 .msg-usage { margin-top: 6px; font-size: 11px; color: var(--ink-soft); text-align: right; }
 .sys-line { align-self: center; font-size: 12px; color: var(--grass-dark); background: rgba(251,228,176,0.85); border: 1px solid var(--frame); padding: 2px 8px; text-align: center; }
@@ -221,7 +224,44 @@ body {
 .thinking-row .tdot:nth-child(3) { animation-delay: 0.6s; }
 @keyframes tblink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0.15; } }
 
-/* 工具块 */
+/* ---------- Markdown 渲染（祝尼魔消息正文，农场手账风） ---------- */
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md p { margin: 8px 0; line-height: 1.7; }
+.md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { margin: 14px 0 8px; line-height: 1.4; color: var(--grass-dark); }
+.md h1 { font-size: 24px; border-bottom: 3px solid var(--frame); padding-bottom: 4px; }
+.md h2 { font-size: 22px; border-bottom: 2px solid var(--frame-hi); padding-bottom: 3px; }
+.md h3 { font-size: 20px; color: var(--barn-red); }
+.md h4 { font-size: 19px; }
+.md h5, .md h6 { font-size: 18px; color: var(--ink-soft); }
+.md ul, .md ol { margin: 8px 0; padding-left: 26px; }
+.md li { margin: 3px 0; line-height: 1.6; }
+.md li::marker { color: var(--frame-hi); }
+.md li > ul, .md li > ol { margin: 3px 0; }
+.md blockquote { margin: 8px 0; padding: 6px 12px; border-left: 5px solid var(--frame-hi); background: rgba(217,167,95,0.35); color: var(--ink-soft); }
+.md blockquote p { margin: 4px 0; }
+.md hr { border: none; border-top: 3px dashed var(--frame-hi); margin: 12px 0; }
+.md a { color: var(--grass-dark); text-decoration: underline; text-underline-offset: 3px; word-break: break-all; }
+.md a:hover { color: var(--barn-red); }
+.md code { font-family: Consolas, 'Courier New', monospace; font-size: 0.76em; background: var(--cave-mid); color: #e3b878; padding: 2px 6px; border: 1px solid var(--border); border-radius: 2px; word-break: break-word; }
+.md table { border-collapse: collapse; margin: 10px 0; font-size: 17px; max-width: 100%; display: block; overflow-x: auto; }
+.md th, .md td { border: 2px solid var(--frame); padding: 4px 10px; }
+.md th { background: var(--panel-dark); color: var(--ink); }
+.md tbody tr:nth-child(even) td { background: rgba(238,199,136,0.5); }
+/* 代码块：深褐木匣 + 语言牌 + 复制按钮 */
+.md .codebox { margin: 10px 0; border: 2px solid var(--border); box-shadow: inset 1px 1px #4a3016, inset -1px -1px #000; background: var(--cave-mid); }
+.md .codebox-head { display: flex; align-items: center; padding: 3px 8px; background: #4a3016; color: #d9b072; font-family: Consolas, monospace; font-size: 11px; user-select: none; }
+.md .codebox-copy { margin-left: auto; font-family: inherit; font-size: 11px; padding: 0 8px; cursor: pointer; background: rgba(0,0,0,0.25); color: #d9b072; border: 1px solid #6a4a28; }
+.md .codebox-copy:hover { color: var(--gold); border-color: var(--gold); }
+.md .codebox pre { margin: 0; padding: 10px 12px; overflow-x: auto; }
+.md .codebox code { background: none; border: none; padding: 0; color: var(--term); font-size: 14px; line-height: 1.55; display: block; white-space: pre; }
+.md .tok-str { color: #a8d08d; }
+.md .tok-com { color: #8a6238; font-style: italic; }
+.md .tok-kw { color: #7ec8e3; }
+.md .tok-num { color: #e8a0b4; }
+.md .tok-tag { color: #e8c06a; }
+
+/* 工具块：木匣双节（参数 / 输出），布告栏委托风 */
 .tool-block {
   align-self: flex-start;
   width: 94%;
@@ -231,15 +271,31 @@ body {
   font-family: Consolas, 'Courier New', monospace;
   font-size: 12px;
 }
-.tool-head { padding: 6px 10px; color: #e8c06a; cursor: pointer; display: flex; gap: 10px; user-select: none; }
+.tool-head { padding: 6px 10px; color: #e8c06a; cursor: pointer; display: flex; gap: 8px; align-items: center; user-select: none; }
 .tool-head:hover { color: var(--gold); }
-.tool-head .tool-args { color: #7a9a5a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.tool-head .tool-label { font-weight: bold; flex: none; }
+.tool-head .tool-raw { color: #9a7a4a; font-size: 10px; flex: none; }
+.tool-head .tool-args { color: #7a9a5a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
 .tool-head .tool-mark { flex: none; }
-.tool-body { padding: 4px 12px 10px; color: var(--term); white-space: pre-wrap; word-break: break-word; border-top: 1px solid #4a3016; max-height: 220px; overflow-y: auto; }
-.tool-block.collapsed .tool-body { display: none; }
+.tool-copy {
+  flex: none; margin-left: auto; font-family: inherit; font-size: 10px; padding: 0 6px; cursor: pointer;
+  background: rgba(0,0,0,0.25); color: #d9b072; border: 1px solid #6a4a28;
+}
+.tool-copy:hover { color: var(--gold); border-color: var(--gold); }
+.tool-body { padding: 0; }
+.tool-sec { border-top: 1px solid #4a3016; }
+.tool-sec-label { padding: 3px 10px 2px; color: #9a7a4a; font-size: 10px; letter-spacing: 2px; user-select: none; }
+.tool-sec pre { margin: 0; padding: 2px 12px 8px; white-space: pre-wrap; word-break: break-word; color: var(--term); max-height: 240px; overflow-y: auto; font-size: 12px; }
+.tool-sec.args pre { color: #c8b088; }
+.tool-block.collapsed .tool-sec { display: none; }
 .tool-error .tool-head { color: #ff8a6a; }
-.tool-error .tool-body { color: #ff9a8a; }
+.tool-error .tool-sec.result pre { color: #ff9a8a; }
 .tool-running .tool-mark::after { content: '…'; color: var(--gold); }
+/* 结果区 JSON 着色 */
+.j-key { color: #e8c06a; }
+.j-str { color: #a8d08d; }
+.j-num { color: #7ec8e3; }
+.j-bool { color: #e8a0b4; }
 
 /* ---------- 祝尼魔对话框输入区 ---------- */
 .input-area {
@@ -884,6 +940,10 @@ const state = {
   followStreamId: null,  // 当前会话 session/follow 流的 streamId
   streamEl: null,     // 流式输出中的助手气泡 body
   streamWrap: null,
+  streamRaw: '',      // 流式期间的原始 markdown 文本（定稿前反复重渲）
+  streamTimer: 0,     // markdown 重渲节流定时器
+  reasonRaw: '',      // 流式期间的思考文本
+  reasonEl: null,     // 流式思考折叠块（定稿后保留为「思考过程」）
   pendingUserText: null,
   toolBlocks: new Map(),
   historyLoaded: false,
@@ -1137,6 +1197,185 @@ function setSeasonTint(on) {
   applySeasonLook()
 }
 
+/* ---------- 轻量 Markdown 渲染（零依赖；先整体转义再解析，模型输出不注入 HTML） ---------- */
+function escHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+}
+function escCode(s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }
+
+/** 极简语法着色（输入须先经 escCode，引号保留原样）；不支持的语言原样返回。 */
+const MD_HL = {
+  js: {
+    re: /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`)|\b(const|let|var|function|return|if|else|for|while|do|of|in|new|class|extends|super|import|from|export|default|async|await|try|catch|finally|throw|switch|case|break|continue|typeof|instanceof|delete|void|yield|this|null|undefined|true|false|static)\b|\b(0x[0-9a-fA-F]+|\d+(?:\.\d+)?)\b/g,
+    cls: ['tok-com', 'tok-str', 'tok-kw', 'tok-num'],
+  },
+  py: {
+    re: /(#[^\n]*)|("""[\s\S]*?"""|'''[\s\S]*?'''|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|\b(def|class|return|if|elif|else|for|while|in|not|and|or|is|import|from|as|with|try|except|finally|raise|lambda|yield|pass|break|continue|global|assert|del|None|True|False|self|async|await)\b|\b(0x[0-9a-fA-F]+|\d+(?:\.\d+)?)\b/g,
+    cls: ['tok-com', 'tok-str', 'tok-kw', 'tok-num'],
+  },
+  sh: {
+    re: /(#[^\n]*)|("(?:[^"\\\n]|\\.)*"|'[^'\n]*')|\b(if|then|else|elif|fi|for|while|until|do|done|case|esac|function|in|return|local|export|echo|source|alias|exit|cd|ls|cat|grep|sed|awk|curl|git|npm|pnpm|node|python|pip|mkdir|rm|cp|mv|chmod|sudo|make)\b|\b(\d+)\b/g,
+    cls: ['tok-com', 'tok-str', 'tok-kw', 'tok-num'],
+  },
+  json: {
+    re: /("(?:[^"\\\n]|\\.)*")(\s*:)?|\b(true|false|null)\b|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
+    cls: ['tok-str', '', 'j-bool', 'j-num'],
+    // JSON 特例：带冒号的串是键（金色），命中时第二捕获组跟随上色
+  },
+  html: {
+    re: /(<!--[\s\S]*-->|<!DOCTYPE[^>]*>)|("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|(<\/?[a-zA-Z][\w-]*|\/?>)/g,
+    cls: ['tok-com', 'tok-str', 'tok-tag'],
+  },
+}
+const MD_HL_LANG = (l) => ({
+  js: 'js', javascript: 'js', jsx: 'js', mjs: 'js', cjs: 'js', node: 'js', ts: 'js', typescript: 'js', tsx: 'js',
+  py: 'py', python: 'py', python3: 'py',
+  bash: 'sh', sh: 'sh', shell: 'sh', zsh: 'sh', console: 'sh', terminal: 'sh',
+  json: 'json', jsonc: 'json', json5: 'json',
+  html: 'html', xml: 'html', svg: 'html', vue: 'html',
+})[String(l || '').toLowerCase()]
+
+function mdHighlight(escapedCode, lang) {
+  const fam = MD_HL_LANG(lang)
+  const rule = fam && MD_HL[fam]
+  if (!rule) return escapedCode
+  return escapedCode.replace(rule.re, function (m, g1, g2, g3, g4) {
+    // JSON 特例：字符串后跟冒号是键（金色），否则是值（绿色）
+    if (fam === 'json' && g1 !== undefined) return '<span class="' + (g2 ? 'j-key' : 'tok-str') + '">' + g1 + '</span>' + (g2 || '')
+    const groups = [g1, g2, g3, g4]
+    for (let k = 0; k < groups.length; k++) {
+      if (groups[k] !== undefined) return '<span class="' + rule.cls[k] + '">' + groups[k] + '</span>'
+    }
+    return m
+  })
+}
+
+/** 行内格式（输入须已转义）：代码 span 先占位保护，再图片→链接→加粗→斜体→删除线。 */
+function mdInline(s) {
+  const codes = []
+  s = s.replace(/`([^`\n]+)`/g, (_, c) => { codes.push('<code>' + c + '</code>'); return '\x00' + (codes.length - 1) + '\x00' })
+  s = s.replace(/!\[([^\]\n]*)\]\(([^)\s]+)\)/g, (_, alt, url) =>
+    /^(https?:|\/|#)/i.test(url) ? '<a href="' + url + '" target="_blank" rel="noopener">🖼 ' + (alt || url) + '</a>' : alt + '（' + url + '）')
+  s = s.replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/g, (_, text, url) =>
+    /^(https?:|\/|#|mailto:)/i.test(url) ? '<a href="' + url + '" target="_blank" rel="noopener">' + text + '</a>' : text + '（' + url + '）')
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+  s = s.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>')
+  s = s.replace(/~~([^~\n]+)~~/g, '<del>$1</del>')
+  return s.replace(/\x00(\d+)\x00/g, (_, i) => codes[+i])
+}
+
+function splitTableRow(line) {
+  let s = line.trim()
+  if (s.startsWith('|')) s = s.slice(1)
+  if (s.endsWith('|')) s = s.slice(0, -1)
+  return s.split('\\|').join('\x01').split('|').map(c => c.trim().split('\x01').join('|'))
+}
+
+function renderList(items) {
+  // 相邻同类型项合成一张表；有序/无序切换处分段（CommonMark 惯例）
+  let html = ''
+  let run = null
+  const flush = () => {
+    if (!run) return
+    html += (run.ordered ? '<ol>' : '<ul>')
+      + run.items.map(it => {
+        const rest = it.text.slice(1).join('\n')
+        return '<li>' + mdInline(escHtml(it.text[0])) + (rest.trim() ? mdToHtml(rest) : '') + '</li>'
+      }).join('')
+      + (run.ordered ? '</ol>' : '</ul>')
+    run = null
+  }
+  for (const it of items) {
+    if (!run || run.ordered !== it.ordered) flush()
+    if (run) run.items.push(it)
+    else run = { ordered: it.ordered, items: [it] }
+  }
+  flush()
+  return html
+}
+
+function renderCodebox(lang, code) {
+  return '<div class="codebox"><div class="codebox-head"><span>' + escHtml(lang || 'text') + '</span>'
+    + '<button type="button" class="codebox-copy" data-code="' + escHtml(code) + '">复制</button></div>'
+    + '<pre><code>' + mdHighlight(escCode(code), lang) + '</code></pre></div>'
+}
+
+/** 块级解析：围栏代码/标题/引用/列表/表格/段落。流式容忍未闭合围栏（EOF 视为闭合）。 */
+function mdToHtml(text) {
+  const lines = String(text ?? '').replace(/\r\n?/g, '\n').split('\n')
+  const out = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    const fence = line.match(/^\s*(```+|~~~+) *([\w+#./-]*)\s*$/)
+    if (fence) {
+      const close = new RegExp('^\\s*' + fence[1] + '+\\s*$')
+      const buf = []
+      i++
+      while (i < lines.length && !close.test(lines[i])) buf.push(lines[i++])
+      i++
+      out.push(renderCodebox(fence[2], buf.join('\n')))
+      continue
+    }
+    let m = line.match(/^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/)
+    if (m) { const n = m[1].length; out.push('<h' + n + '>' + mdInline(escHtml(m[2])) + '</h' + n + '>'); i++; continue }
+    if (/^\s{0,3}([-*_])( *\1){2,} *$/.test(line)) { out.push('<hr>'); i++; continue }
+    if (line.includes('|') && i + 1 < lines.length && /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/.test(lines[i + 1])) {
+      const header = splitTableRow(line)
+      const aligns = splitTableRow(lines[i + 1]).map(c => c.startsWith(':') && c.endsWith(':') ? ' style="text-align:center"' : c.endsWith(':') ? ' style="text-align:right"' : '')
+      i += 2
+      const rows = []
+      while (i < lines.length && lines[i].includes('|') && lines[i].trim() !== '') rows.push(splitTableRow(lines[i++]))
+      const cell = (c, x, tag) => '<' + tag + (aligns[x] || '') + '>' + mdInline(escHtml(c ?? '')) + '</' + tag + '>'
+      out.push('<table><thead><tr>' + header.map((c, x) => cell(c, x, 'th')).join('') + '</tr></thead><tbody>'
+        + rows.map(r => '<tr>' + header.map((_, x) => cell(r[x], x, 'td')).join('') + '</tr>').join('') + '</tbody></table>')
+      continue
+    }
+    if (/^\s{0,3}>/.test(line)) {
+      const buf = []
+      while (i < lines.length && /^\s{0,3}>/.test(lines[i])) buf.push(lines[i++].replace(/^\s{0,3}>\s?/, ''))
+      out.push('<blockquote>' + mdToHtml(buf.join('\n')) + '</blockquote>')
+      continue
+    }
+    m = line.match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/)
+    if (m) {
+      const items = []
+      let cur = null
+      while (i < lines.length) {
+        const lm = lines[i].match(/^(\s*)([-*+]|\d+[.)])\s+(.*)$/)
+        if (lm) {
+          const indent = lm[1].length
+          if (!cur || indent <= cur.indent) { cur = { indent, ordered: /\d/.test(lm[2]), text: [lm[3]] }; items.push(cur) }
+          else cur.text.push(lm[2] + ' ' + lm[3]) // 更深一级：保留列表标记，子列表交给递归
+          i++
+        } else if (lines[i].trim() !== '' && cur && /^ {2,}/.test(lines[i])) { cur.text.push(lines[i].trim()); i++ }
+        else if (lines[i].trim() === '' && i + 1 < lines.length && /^\s*([-*+]|\d+[.)])\s+/.test(lines[i + 1])) { i++ }
+        else break
+      }
+      out.push(renderList(items))
+      continue
+    }
+    if (line.trim() === '') { i++; continue }
+    const buf = [line]
+    i++
+    while (i < lines.length && lines[i].trim() !== ''
+      && !/^\s*(```+|~~~+)/.test(lines[i]) && !/^\s{0,3}#{1,6}\s/.test(lines[i])
+      && !/^\s{0,3}>/.test(lines[i]) && !/^(\s*)([-*+]|\d+[.)])\s+/.test(lines[i])
+      && !/^\s{0,3}([-*_])( *\1){2,} *$/.test(lines[i])) buf.push(lines[i++])
+    out.push('<p>' + buf.map(l => mdInline(escHtml(l))).join('<br>') + '</p>')
+  }
+  return out.join('')
+}
+
+/** 布告栏委托：dsh 工具名 → 农活叫法（未收录的原样显示）。 */
+const TOOL_LABELS = {
+  bash: '终端命令', read: '读取文件', read_image: '查看图片', write: '写入文件', edit: '编辑文件',
+  glob: '文件搜索', grep: '内容搜索', ls: '列出文件', todo_write: '任务日志',
+  web_search: '搜索网络', web_fetch: '翻阅网页', skill: '翻阅技能书', task: '派遣助手',
+  agent: '派遣助手', list_subagent_models: '助手名册', notebook_edit: '编辑笔记本',
+  ask_user: '询问农夫', user_questions: '询问农夫', workflow: '农活流程', plan: '农活计划',
+}
+
 /* ---------- 基础 RPC ---------- */
 class RpcError extends Error {
   constructor(code, message) { super(message); this.code = code }
@@ -1378,6 +1617,10 @@ function replaySnapshot(snap) {
   state.toolBlocks.clear()
   state.streamEl = null
   state.streamWrap = null
+  state.streamRaw = ''
+  state.reasonRaw = ''
+  state.reasonEl = null
+  if (state.streamTimer) { clearTimeout(state.streamTimer); state.streamTimer = 0 }
   let lastTodos = null
   for (const rec of snap.records || []) {
     // chunks 记录是打包的助手增量流；定稿 assistant/message 会完整渲染，回放跳过
@@ -1467,35 +1710,69 @@ function startAssistantStream() {
   name.className = 'msg-name'
   name.textContent = state.npcName
   const body = document.createElement('div')
-  body.className = 'msg-text'
+  body.className = 'msg-text md'
   body.textContent = ''
   bubble.appendChild(name); bubble.appendChild(body)
   el.appendChild(bubble)
   $('#messages').appendChild(el)
   state.streamWrap = el
   state.streamEl = body
+  state.streamRaw = ''
   scrollMsgs()
   return body
+}
+/** 流式期间节流重渲 markdown：120ms 一帧，避免每 delta 全量解析。 */
+function scheduleStreamRender() {
+  if (state.streamTimer || !state.streamEl) return
+  state.streamTimer = setTimeout(() => {
+    state.streamTimer = 0
+    if (!state.streamEl) return
+    state.streamEl.innerHTML = mdToHtml(state.streamRaw)
+    scrollMsgs()
+  }, 120)
+}
+/** 流式思考块：reasoning-delta 实时显示；正文开写后折叠，定稿沿用。 */
+function ensureReasoningBlock() {
+  if (state.reasonEl) return state.reasonEl
+  const det = document.createElement('details')
+  det.className = 'msg-reasoning'
+  det.open = true
+  const sum = document.createElement('summary')
+  sum.className = 'live'
+  sum.textContent = '思考中…'
+  const rb = document.createElement('div')
+  rb.className = 'r-body'
+  det.appendChild(sum); det.appendChild(rb)
+  const anchor = state.streamWrap || null
+  $('#messages').insertBefore(det, anchor)
+  state.reasonEl = det
+  return det
+}
+function foldReasoningBlock(reasoningText) {
+  const det = state.reasonEl
+  state.reasonRaw = reasoningText
+  state.reasonEl = null
+  if (!det) return
+  const sum = det.querySelector('summary')
+  const rb = det.querySelector('.r-body')
+  if (sum) { sum.classList.remove('live'); sum.textContent = '思考过程' }
+  if (rb) rb.textContent = reasoningText || ''
+  det.open = false
+  if (!reasoningText) det.remove()
 }
 function finalizeAssistant(message, usage) {
   const text = blocksText(message.content)
   const reasoning = blocksReasoning(message.content)
+  if (state.streamTimer) { clearTimeout(state.streamTimer); state.streamTimer = 0 }
+  // 流式路径已有实时思考块则沿用它；回放路径（无 chunk 事件）在此兜底创建
+  if (reasoning) { ensureReasoningBlock(); foldReasoningBlock(reasoning) }
+  else foldReasoningBlock('')
   const body = state.streamEl || startAssistantStream()
-  body.textContent = text
-  // 名牌行补复制按钮（历史回放与实时流共用本函数；stream 中途无按钮，定稿即有）
+  body.innerHTML = mdToHtml(text)
+  // 名牌行补复制按钮（历史回放与实时流共用本函数；stream 中途无按钮，定稿即有）；
+  // 复制的是原始 markdown 文本，不是渲染后的 HTML
   const nameRow = body.parentNode ? body.parentNode.querySelector('.msg-name') : null
-  if (nameRow && !nameRow.querySelector('.msg-copy')) nameRow.appendChild(msgCopyBtn(() => body.textContent))
-  if (reasoning) {
-    const det = document.createElement('details')
-    det.className = 'msg-reasoning'
-    const sum = document.createElement('summary')
-    sum.textContent = '思考过程'
-    const rb = document.createElement('div')
-    rb.className = 'r-body'
-    rb.textContent = reasoning
-    det.appendChild(sum); det.appendChild(rb)
-    body.parentNode.insertBefore(det, body)
-  }
+  if (nameRow && !nameRow.querySelector('.msg-copy')) nameRow.appendChild(msgCopyBtn(() => text))
   if (usage && (usage.inputTokens !== undefined || usage.totalTokens !== undefined)) {
     const u = document.createElement('div')
     u.className = 'msg-usage'
@@ -1507,6 +1784,7 @@ function finalizeAssistant(message, usage) {
   }
   state.streamEl = null
   state.streamWrap = null
+  state.streamRaw = ''
   scrollMsgs()
 }
 
@@ -1526,23 +1804,75 @@ function updateEnergy(usage) {
   pct.title = '本轮回 prompt ' + used + ' / 标称上下文 ' + state.ctxCap + ' tokens（可用 stardew.ctxCap 调整）'
 }
 
+/** JSON 着色：可解析时格式化并按键/串/数着色，否则按纯文本转义返回。 */
+function jsonTint(text) {
+  const raw = String(text ?? '')
+  let obj
+  try { obj = JSON.parse(raw) } catch { return escCode(raw) }
+  const pretty = (obj !== null && typeof obj === 'object') ? JSON.stringify(obj, null, 2) : raw
+  return escCode(pretty).replace(/("(?:[^"\\\n]|\\.)*")(\s*:)?|\b(true|false|null)\b|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/g,
+    (m, str, colon, bool, num) => {
+      if (str) return '<span class="' + (colon ? 'j-key' : 'j-str') + '">' + str + '</span>' + (colon || '')
+      if (bool) return '<span class="j-bool">' + bool + '</span>'
+      if (num) return '<span class="j-num">' + num + '</span>'
+      return m
+    })
+}
+
 function appendToolBlock(callId, name, args) {
   const el = document.createElement('div')
   el.className = 'tool-block tool-running'
+  el.dataset.rawArgs = args || ''
+  el.dataset.rawResult = ''
   const head = document.createElement('div')
   head.className = 'tool-head'
   const mark = document.createElement('span')
   mark.className = 'tool-mark'
   mark.textContent = '▶'
   const label = document.createElement('span')
-  label.textContent = name
+  label.className = 'tool-label'
+  label.textContent = TOOL_LABELS[name] || name
+  head.appendChild(mark); head.appendChild(label)
+  if (TOOL_LABELS[name]) {
+    const rawName = document.createElement('span')
+    rawName.className = 'tool-raw'
+    rawName.textContent = name
+    head.appendChild(rawName)
+  }
   const argsEl = document.createElement('span')
   argsEl.className = 'tool-args'
   argsEl.textContent = args || ''
-  head.appendChild(mark); head.appendChild(label); head.appendChild(argsEl)
+  head.appendChild(argsEl)
+  const copy = document.createElement('button')
+  copy.type = 'button'
+  copy.className = 'tool-copy'
+  copy.textContent = '复制'
+  copy.addEventListener('click', (e) => {
+    e.stopPropagation()
+    copyText(el.dataset.rawResult || el.dataset.rawArgs)
+  })
+  head.appendChild(copy)
+  // 参数节：pretty JSON 着色
+  const argSec = document.createElement('div')
+  argSec.className = 'tool-sec args'
+  const argLabel = document.createElement('div')
+  argLabel.className = 'tool-sec-label'
+  argLabel.textContent = '参数'
+  const argPre = document.createElement('pre')
+  argPre.innerHTML = jsonTint(args || '')
+  argSec.appendChild(argLabel); argSec.appendChild(argPre)
+  // 结果节：完成前显示运行中
+  const resSec = document.createElement('div')
+  resSec.className = 'tool-sec result'
+  const resLabel = document.createElement('div')
+  resLabel.className = 'tool-sec-label'
+  resLabel.textContent = '输出'
+  const resPre = document.createElement('pre')
+  resPre.textContent = '运行中…'
+  resSec.appendChild(resLabel); resSec.appendChild(resPre)
   const body = document.createElement('div')
   body.className = 'tool-body'
-  body.textContent = '运行中…'
+  body.appendChild(argSec); body.appendChild(resSec)
   head.addEventListener('click', () => el.classList.toggle('collapsed'))
   el.appendChild(head); el.appendChild(body)
   $('#messages').appendChild(el)
@@ -1558,9 +1888,13 @@ function finishToolBlock(callId, resultText, isError) {
   const mark = el.querySelector('.tool-mark')
   if (mark) mark.textContent = isError ? '✕' : '✔'
   if (isError) el.classList.add('tool-error')
-  const body = el.querySelector('.tool-body')
-  if (body) body.textContent = resultText || '(无输出)'
-  termLine('工具完成 ' + (isError ? '失败: ' : '') + (resultText || '').slice(0, 120), isError ? 't-err' : undefined)
+  const text = resultText || '(无输出)'
+  const resPre = el.querySelector('.tool-sec.result pre')
+  if (resPre) resPre.innerHTML = jsonTint(text)
+  el.dataset.rawResult = text
+  // 长输出自动折叠，点击头部可展开
+  if (text.length > 2400) el.classList.add('collapsed')
+  termLine('工具完成 ' + (isError ? '失败: ' : '') + text.slice(0, 120), isError ? 't-err' : undefined)
 }
 
 let thinkingEl = null
@@ -1638,11 +1972,18 @@ function handleSessionEvent(sid, event, replay) {
       const c = d.chunk
       if (!c) break
       if (c.type === 'text-delta') {
-        const body = startAssistantStream()
-        body.textContent += c.text
-        scrollMsgs()
+        startAssistantStream()
+        state.streamRaw += c.text
+        scheduleStreamRender()
       } else if (c.type === 'reasoning-delta') {
-        showThinking()
+        // 思考增量实时上屏（点阵行让位给真实思考文本）
+        hideThinking()
+        const det = ensureReasoningBlock()
+        state.reasonRaw += c.text
+        const rb = det.querySelector('.r-body')
+        rb.textContent = state.reasonRaw
+        rb.scrollTop = rb.scrollHeight
+        scrollMsgs()
       }
       break
     }
@@ -1677,7 +2018,12 @@ function handleSessionEvent(sid, event, replay) {
       } else if (r.kind === 'max-tokens') {
         appendSysLine('达到单步输出上限')
       }
+      if (state.streamTimer) { clearTimeout(state.streamTimer); state.streamTimer = 0 }
       if (state.streamEl && state.streamEl.textContent === '') { state.streamWrap.remove(); state.streamEl = null; state.streamWrap = null }
+      state.streamRaw = ''
+      // 空思考块（只有点阵没有内容）随回合结束清掉
+      if (state.reasonEl && !state.reasonRaw) { state.reasonEl.remove(); state.reasonEl = null }
+      state.reasonRaw = ''
       break
     }
     case 'todo/write':
@@ -1700,11 +2046,12 @@ function handleApproval(eventId, p) {
   }
   const body = document.createElement('div')
   const l1 = document.createElement('div')
-  l1.textContent = state.npcName + '想要使用工具：' + p.toolName
+  const toolLabel = TOOL_LABELS[p.toolName]
+  l1.textContent = state.npcName + '想要使用工具：' + (toolLabel ? toolLabel + '（' + p.toolName + '）' : p.toolName)
   const l2 = document.createElement('div')
   l2.style.fontSize = '12px'
   l2.style.color = 'var(--stone)'
-  l2.textContent = p.reason || '该操作被权限策略拦截，需要你的许可。'
+  l2.textContent = p.reason || p.displayReason || '该操作被权限策略拦截，需要你的许可。'
   body.appendChild(l1); body.appendChild(l2)
   openModal('布告栏委托', body, [
     { label: '拒绝', danger: true, onClick: () => eventResult(eventId, 'rejected').catch(e => toast(e.message, 'err')) },
@@ -1786,7 +2133,9 @@ function handleQuestion(eventId, p) {
 /* ---------- 滚动 ---------- */
 function scrollMsgs() {
   const m = $('#messages')
-  m.scrollTop = m.scrollHeight
+  // 用户上翻阅读时不再强制拽底；距底 120px 内才跟随
+  const near = m.scrollHeight - m.scrollTop - m.clientHeight < 120
+  if (near) m.scrollTop = m.scrollHeight
 }
 
 /* ---------- 凭据（API 密钥） ---------- */
@@ -1953,6 +2302,14 @@ function loadBgmFile(file) {
 // 浏览器自动播放策略：页面加载后需一次交互才允许出声；开着重试，直到成功。
 document.addEventListener('pointerdown', () => {
   if (state.bgmOn && bgmAudio && bgmAudio.paused) bgmAudio.play().catch(() => { })
+})
+
+// markdown 代码块复制按钮：#messages 上事件委托一次挂载（流式重渲不丢）
+$('#messages').addEventListener('click', (e) => {
+  const btn = e.target.closest('.codebox-copy')
+  if (!btn) return
+  e.stopPropagation()
+  copyText(btn.getAttribute('data-code') ?? '')
 })
 
 /* ---------- SoundCloud 示例 BGM（官方 iframe 播放器；需要能访问 soundcloud.com） ---------- */

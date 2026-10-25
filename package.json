@@ -27,6 +27,14 @@
     "web-ui"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zeppeli777/dsh-stardew-skin.git"
+  },
+  "homepage": "https://github.com/Zeppeli777/dsh-stardew-skin/tree/fullskin#readme",
+  "bugs": {
+    "url": "https://github.com/Zeppeli777/dsh-stardew-skin/issues"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"

@@ -2,11 +2,14 @@
 # of the official React dist on the Web surface.
 #
 # The official web-runtime row (inserted by the dsh-web-app bundle layer)
-# serves the official frontend and provides the `webRuntime` service the
-# connection row injects. Disabling it here and inserting an identical row
-# whose plugin is dsh-theme-stardew-fullskin keeps the whole Web runtime — dist
-# serving, the /api trust fence, the web-surface prompt section, DSH_WEB_URL,
-# the URL line — while the served dist becomes this package's web/ directory.
+# serves the official frontend; since dsh 0.2.x the connection row reads the
+# /api trust authorities straight from `webStartup`, so the fence is untouched
+# here. Disabling web-runtime and inserting an identical row whose plugin is
+# dsh-theme-stardew-fullskin keeps the whole Web runtime — dist serving, the
+# trust fence, DSH_WEB_URL, the URL line — while the served dist becomes this
+# package's web/ directory. The config restates every key the row owns (a
+# patch replaces the whole config; `trustedHosts` moved to the connection row
+# in 0.2.x and is no longer part of this row's schema).
 # Remove this bundle from the profile to fall back to the official frontend.
 
 - id: web-runtime
@@ -17,6 +20,7 @@
       name: dsh-theme-stardew-fullskin
       inject: [webStartup]
       config:
+        openBrowser: !!js ctx.webStartup.openBrowser
         printUrl: true
+        publicUrl: !!js ctx.webStartup.publicUrl
         surfaceContext: true
-        trustedHosts: !!js ctx.webStartup.trustedHosts

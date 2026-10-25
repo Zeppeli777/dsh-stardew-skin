@@ -8,7 +8,7 @@
 
 ![标题屏](screenshots/title.png)
 
-![主界面（0.1.7 实测）](screenshots/main-017.png)
+![主界面（0.2.1 实测）](screenshots/main-021.png)
 
 ## 功能一览
 
@@ -41,8 +41,10 @@
 ## 安装
 
 ```
-# 环境：dsh CLI 0.1.2-rc.1 ~ 0.1.7-rc.2 实测兼容（沙箱端到端验证：
-# 会话/流式输出/工具调用/预设/模型切换/存档列表；旧版 dsh 请用历史提交），Node.js ^22.19 || >=24 与 pnpm
+# 环境：dsh CLI 0.1.2-rc.1 ~ 0.2.1-rc.3 实测兼容（沙箱端到端验证：
+# 会话/流式输出/工具调用/预设/模型切换/存档列表；0.2.x 起 trust fence
+# 移到 connection 行、web-runtime 行不再携带 trustedHosts，本插件已同步；
+# 旧版 dsh 请用历史提交），Node.js ^22.19 || >=24 与 pnpm
 # 1. 把主题作为插件安装进 web profile
 dsh plugin --profile web add dsh-theme-stardew-fullskin
 

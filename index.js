@@ -98,7 +98,9 @@ function resolveWebAppEntry(ctx) {
  * @param ctx - plugin context (the row injects `webStartup`; the delegated
  *   plugin injects `webServer` itself).
  * @param config - the same shape the official web-runtime row takes:
- *   `printUrl` and `surfaceContext` booleans plus `trustedHosts` strings.
+ *   `openBrowser`, `printUrl`, `publicUrl` and `surfaceContext`. Since dsh
+ *   0.2.x the /api trust authorities live on the connection row (fed from
+ *   `webStartup` directly), so this row no longer carries `trustedHosts`.
  * @returns a promise resolving once the delegated plugin is mounted.
  */
 export async function apply(ctx, config) {

@@ -8,9 +8,9 @@
 
 ![对话页](screenshots/chat-page-fixed.png)
 
-在 dsh 0.1.7-rc.2 上的实测（首页与会话页）：
+在 dsh 0.2.1-rc.3 上的实测（首页与会话页）：
 
-![0.1.7 会话页](screenshots/chat-017.png)
+![0.2.1 会话页](screenshots/chat-021.png)
 
 ## 效果
 
@@ -23,8 +23,8 @@
 ## 安装
 
 ```bash
-# 环境：dsh CLI 0.1.2-rc.1 ~ 0.1.7-rc.2 实测兼容（dsh --version 确认；
-# 主题走官方 overrideTokens 机制与 --dsw-* token，跨 0.1.x 版本稳定）
+# 环境：dsh CLI 0.1.2-rc.1 ~ 0.2.1-rc.3 实测兼容（dsh --version 确认；
+# 主题走官方 overrideTokens 机制与 --dsw-* token，跨 0.1.x / 0.2.x 版本稳定）
 dsh plugin --profile web add dsh-theme-stardew        # 从 npm / 插件源
 # 或本地目录：
 dsh plugin --profile web add /path/to/dsh-stardew-skin
@@ -85,7 +85,7 @@ node scripts/build-client.mjs   # 把 assets/ 的字体+壁纸转 base64 填入 
 | --- | --- | --- |
 | 机制 | 官方 token 覆盖 | 整体替换伺服的前端 |
 | 官方新功能 | 自动跟随 | 需手动追版 |
-| 兼容性 | dsh 0.1.2-rc.1 ~ 0.1.7-rc.2 实测通过 | 同左（0.1.5-rc.1 / 0.1.7-rc.2 实测） |
+| 兼容性 | dsh 0.1.2-rc.1 ~ 0.2.1-rc.3 实测通过 | 同左（0.1.5-rc.1 / 0.1.7-rc.2 / 0.2.1-rc.3 实测） |
 | 稳定性 | 高（不碰 DOM 结构） | 依赖 RPC 协议细节 |
 | 玩法 | 纯视觉 | 祝尼魔 / 桌宠 / 音效 / 能量条 |
 

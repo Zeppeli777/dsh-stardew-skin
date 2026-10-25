@@ -4,7 +4,9 @@
 
 灵感与骨架来自 [dsh_theme_terraria](https://github.com/10086ggqq/dsh_theme_terraria)（同一套 dsh 主题插件机制），视觉与素材全面换成星露谷物语。
 
-> 🔀 本分支（`fullskin`）是**完全替换版**：整个前端换成星露谷界面。想要只换配色、保留官方 React UI 的**组件替换版**，请切到 [`main`](../../tree/main) 分支。
+> ⚠️ **本分支已停止更新**：整皮版已拆分为独立仓库 [dsh-theme-stardew-fullskin](https://github.com/Zeppeli777/dsh-theme-stardew-fullskin)（npm 同名包），请到那边安装与提 issue。
+>
+> 组件替换版（保留官方 React UI 的配色主题）在 [dsh-theme-stardew-skin](https://github.com/Zeppeli777/dsh-stardew-skin)（npm 包名 dsh-theme-stardew-valley）。
 
 ![标题屏](screenshots/title.png)
 
@@ -51,11 +53,11 @@
 # 1. 把主题作为插件安装进 web profile
 dsh plugin --profile web add dsh-theme-stardew-fullskin
 
-# 或从本地目录安装（本分支的仓库根就是插件包）
+# 或从本地目录安装（本分支的仓库根就是插件包；新仓库同构）
 dsh plugin --profile web add /path/to/dsh-stardew-skin
 
 # 或直接从 GitHub 的本分支安装
-dsh plugin --profile web add github:Zeppeli777/dsh-stardew-skin#fullskin
+dsh plugin --profile web add github:Zeppeli777/dsh-theme-stardew-fullskin
 
 # 2. 启动 Web 服务（默认 http://127.0.0.1:3080/）
 dsh web

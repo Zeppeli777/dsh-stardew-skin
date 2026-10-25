@@ -78,10 +78,10 @@ node scripts/build-client.mjs   # 把 assets/ 的字体+壁纸转 base64 填入 
 
 ## 与整皮版怎么选
 
-> 🔀 本分支（`main`）是**组件替换版**。完全替换版（祝尼魔对话、农场选模式、能量条 HUD、桌宠、8-bit 音效）在 [`fullskin`](../../tree/fullskin) 分支，该分支的仓库根就是插件包：
-> `dsh plugin --profile web add github:Zeppeli777/dsh-stardew-skin#fullskin`
+> 🔀 本仓库是**组件替换版**。完全替换版（祝尼魔对话、农场选模式、能量条 HUD、桌宠、8-bit 音效）已拆分为独立仓库 [`dsh-theme-stardew-fullskin`](https://github.com/Zeppeli777/dsh-theme-stardew-fullskin)：
+> `dsh plugin --profile web add github:Zeppeli777/dsh-theme-stardew-fullskin`
 
-| | **dsh-theme-stardew-valley**（本分支） | fullskin 分支（整皮版） |
+| | **dsh-theme-stardew-valley**（本仓库） | [dsh-theme-stardew-fullskin](https://github.com/Zeppeli777/dsh-theme-stardew-fullskin)（整皮版） |
 | --- | --- | --- |
 | 机制 | 官方 token 覆盖 | 整体替换伺服的前端 |
 | 官方新功能 | 自动跟随 | 需手动追版 |

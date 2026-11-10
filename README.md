@@ -8,7 +8,7 @@
 
 ![对话页](screenshots/chat-page-fixed.png)
 
-在 dsh 0.2.1-rc.3 上通过本地插件链接实测，走查覆盖首页、真实会话、Python 与纯文本代码块、工具调用与轨迹、模型与权限菜单，以及写入审批：
+在 dsh 0.2.1-rc.3 上通过本地插件链接实测（0.2.2-rc.1 复测首页、模型菜单与 token 覆盖），走查覆盖首页、真实会话、Python 与纯文本代码块、工具调用与轨迹、模型与权限菜单，以及写入审批：
 
 ![0.2.1 首页](screenshots/home-021.png)
 
@@ -36,8 +36,9 @@
 ## 安装
 
 ```bash
-# 环境：dsh CLI 0.1.2-rc.1 ~ 0.2.1-rc.3 实测兼容（dsh --version 确认；
-# 主题走官方 overrideTokens 机制与 --dsw-* token，跨 0.1.x / 0.2.x 版本稳定）
+# 环境：dsh CLI 0.1.2-rc.1 ~ 0.2.2-rc.1 实测兼容（dsh --version 确认；
+# 主题走官方 overrideTokens 机制与 --dsw-* token，跨 0.1.x / 0.2.x 版本稳定。
+# 0.2.2 起补齐 state-done-primary 与 illustration-* 新 token，侧栏悬停回落 alias 层）
 dsh plugin --profile web add dsh-theme-stardew-valley  # 从 npm / 插件源
 # 或本地目录：
 dsh plugin --profile web add /path/to/dsh-stardew-skin
